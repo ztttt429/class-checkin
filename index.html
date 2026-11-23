@@ -32,6 +32,15 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 .schedule-heading .badge{flex:none;white-space:nowrap}
 .schedule-card>button{width:auto;padding:9px 14px;margin-top:10px}
 .schedule-card>section{box-shadow:none}
+.history-card{padding:0 16px}
+.history-card summary{padding:14px 0;cursor:pointer;font-weight:750}
+.history-list{max-height:24rem;overflow:auto;padding:0;margin:0;list-style:none}
+.history-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--edge);padding:12px 0}
+.history-list .badge{flex:none}
+.history-list strong{overflow-wrap:anywhere}
+.history-empty{margin:0 0 14px}
+.history-export{width:auto;margin:0 0 12px;padding:9px 14px}
+.history-export:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -39,74 +48,72 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     <header class="nav">
       <div class="logo"><div class="mark" aria-hidden="true">✓</div>课堂签到</div>
     </header>
-    <div id="checkinView">
+    <section class="card" id="identityView" aria-labelledby="identityTitle" hidden>
+      <form class="card-body" id="identityForm" autocomplete="off">
+        <h1 class="headline" id="identityTitle">选择姓名</h1>
+        <p class="desc">确认后，此浏览器将固定使用该姓名。</p>
+        <label class="field" for="studentSelect">班级名单</label>
+        <div class="select-wrap">
+          <select id="studentSelect" required>
+            <option value="" selected disabled>请选择你的姓名</option>
+            <option>李天翼</option>
+            <option>王玺杰</option>
+            <option>孔佳睿</option>
+            <option>司嘉晨</option>
+            <option>王胤祺</option>
+            <option>涂磊</option>
+            <option>苏启航</option>
+            <option>刘捷轲</option>
+            <option>孙远泽</option>
+            <option>纪奥林</option>
+            <option>梁臻卓</option>
+            <option>郑奕</option>
+            <option>尹子昂</option>
+            <option>马坤</option>
+            <option>王子迈</option>
+            <option>侯鲁鑫</option>
+            <option>谢鑫</option>
+            <option>黄海晨</option>
+            <option>沈煜杰</option>
+            <option>巩昊睿</option>
+            <option>黄子晨</option>
+            <option>李坤钰</option>
+            <option>李杰麟</option>
+            <option>雷鸿康</option>
+            <option>刘晓阳</option>
+            <option>胡鑫涛</option>
+            <option>冯源</option>
+            <option>田士鑫</option>
+            <option>段菊华</option>
+            <option>王天乐</option>
+            <option>王钰皓</option>
+            <option>徐可轩</option>
+            <option>袁铭楷</option>
+            <option>任浩阳</option>
+            <option>林恺熙</option>
+            <option>郭景翔</option>
+            <option>陈柯嘉</option>
+            <option>白依卉如</option>
+            <option>范晓蕾</option>
+          </select>
+        </div>
+        <button type="submit">确认姓名</button>
+        <p class="desc" id="identityError" role="status" hidden>浏览器无法保存姓名，请允许本地存储后再试。</p>
+      </form>
+    </section>
+    <div id="checkinView" hidden>
       <h1 class="headline">25级科学计算班课堂签到</h1>
+      <div class="desc" id="currentStudent"></div>
       <div class="desc" id="dateLine"></div>
+      <details class="card history-card" id="historyView">
+        <summary>历史签到记录<span id="historyCount"></span></summary>
+        <p class="desc history-empty" id="historyEmpty">暂无签到记录。</p>
+        <p class="desc history-empty" id="historyNote" hidden>从 11 月 24 日起，状态以本机浏览器的签到记录为准。</p>
+        <button class="history-export" id="exportHistory" type="button" disabled>导出 CSV</button>
+        <ul class="history-list" id="historyList"></ul>
+      </details>
       <div id="courseList" class="course-list"></div>
       <p class="desc" id="noSessions" hidden>当前课表暂无后续签到安排。</p>
-      <section class="card" id="openView" aria-labelledby="courseName" hidden>
-        <div class="card-body">
-          <div class="badge live"><span class="dot" aria-hidden="true"></span>签到开放中</div>
-          <h2 class="course" id="courseName"></h2>
-          <div class="info">
-            <i aria-hidden="true">◷</i><div><b id="courseTime"></b><span id="courseSlot"></span></div>
-          </div>
-          <div class="info">
-            <i aria-hidden="true">⌖</i><div><b id="coursePlace"></b></div>
-          </div>
-          <div class="info course-info">
-            <i aria-hidden="true">◎</i><div><b>签到范围：50 米</b></div>
-          </div>
-          <form class="checkin-form" id="checkinForm" autocomplete="off">
-            <label class="field" for="studentSelect">选择姓名</label>
-            <div class="select-wrap">
-              <select id="studentSelect" required>
-                <option value="" selected disabled>请选择你的姓名</option>
-                <option>李天翼</option>
-                <option>王玺杰</option>
-                <option>孔佳睿</option>
-                <option>司嘉晨</option>
-                <option>王胤祺</option>
-                <option>涂磊</option>
-                <option>苏启航</option>
-                <option>刘捷轲</option>
-                <option>孙远泽</option>
-                <option>纪奥林</option>
-                <option>梁臻卓</option>
-                <option>郑奕</option>
-                <option>尹子昂</option>
-                <option>马坤</option>
-                <option>王子迈</option>
-                <option>侯鲁鑫</option>
-                <option>谢鑫</option>
-                <option>黄海晨</option>
-                <option>沈煜杰</option>
-                <option>巩昊睿</option>
-                <option>黄子晨</option>
-                <option>李坤钰</option>
-                <option>李杰麟</option>
-                <option>雷鸿康</option>
-                <option>刘晓阳</option>
-                <option>胡鑫涛</option>
-                <option>冯源</option>
-                <option>田士鑫</option>
-                <option>段菊华</option>
-                <option>王天乐</option>
-                <option>王钰皓</option>
-                <option>徐可轩</option>
-                <option>袁铭楷</option>
-                <option>任浩阳</option>
-                <option>林恺熙</option>
-                <option>郭景翔</option>
-                <option>陈柯嘉</option>
-                <option>白依卉如</option>
-                <option>范晓蕾</option>
-              </select>
-            </div>
-            <button type="submit">签到</button>
-          </form>
-        </div>
-      </section>
     </div>
     <section class="card success-card" id="successView" aria-labelledby="successTitle" hidden>
       <div class="success-mark" aria-hidden="true">✓</div>
@@ -115,6 +122,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         <div><dt>姓名</dt><dd id="successName"></dd></div>
         <div><dt>课程</dt><dd id="successCourse"></dd></div>
       </dl>
+      <p class="desc" id="storageHint" hidden>浏览器未能保存这次签到，重新打开页面后可能需要再签到。</p>
       <button type="button" id="returnHome">返回首页</button>
     </section>
   </main>
@@ -122,9 +130,12 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     const slots = [['08:00','09:50'],['10:10','12:00'],['14:00','15:50'],['16:10','18:00'],['19:00','20:50']];
     const schedule = [{"day":1,"slot":1,"duration":1,"name":"C++程序设计","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":3,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":4,"slot":1,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":5,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":1,"slot":2,"duration":1,"name":"C++程序设计","weeks":[1,3,5,7,9,11,13,15],"place":"威海竹风楼201"},{"day":1,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":3,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":4,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼553"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":3,"duration":1,"name":"C++程序设计","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":4,"slot":3,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[2,4,6],"place":"威海图西教学楼322"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[8,10,12,14,16],"place":"威海学思楼558"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[1,2,3,4,5,6,7],"place":"威海图西教学楼322"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[8,9,10,11,12,13,14,15,16],"place":"威海学思楼558"},{"day":3,"slot":4,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"}];
     const dayLength = 86_400_000;
+    const recordStart = Date.UTC(2026, 10, 24);
     const semesterStart = Date.parse('2026-09-07T00:00:00Z');
     const lastTeachingWeek = Math.max(...schedule.flatMap(course => course.weeks));
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const storagePrefix = 'class-checkin:v1:';
+    const identityKey = storagePrefix + 'student';
     const clock = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Shanghai',
       year: 'numeric',
@@ -158,15 +169,20 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 
     const courseList = document.getElementById('courseList');
     const noSessions = document.getElementById('noSessions');
+    const historyList = document.getElementById('historyList');
+    const exportHistory = document.getElementById('exportHistory');
+    const historyCount = document.getElementById('historyCount');
+    const historyEmpty = document.getElementById('historyEmpty');
+    const historyNote = document.getElementById('historyNote');
+    const storageHint = document.getElementById('storageHint');
     const studentSelect = document.getElementById('studentSelect');
-    const checkinForm = document.getElementById('checkinForm');
+    const identityView = document.getElementById('identityView');
+    const identityForm = document.getElementById('identityForm');
+    const identityError = document.getElementById('identityError');
+    const currentStudent = document.getElementById('currentStudent');
     const checkinView = document.getElementById('checkinView');
-    const openView = document.getElementById('openView');
     const dateLine = document.getElementById('dateLine');
-    const courseName = document.getElementById('courseName');
-    const courseTime = document.getElementById('courseTime');
-    const courseSlot = document.getElementById('courseSlot');
-    const coursePlace = document.getElementById('coursePlace');
+    const names = new Set(Array.from(studentSelect.options, option => option.value).filter(Boolean));
     const successView = document.getElementById('successView');
     const successTitle = document.getElementById('successTitle');
     const successName = document.getElementById('successName');
@@ -182,38 +198,128 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         course, day,
         opensAt: day + course.opens * 60_000,
         closesAt: day + course.closes * 60_000,
+        sessionKey: JSON.stringify([day, course.start, course.name]),
         signed: false
       };
-    })).sort((first, second) => first.opensAt - second.opensAt);
+    })).filter(session => session.day >= recordStart)
+      .sort((first, second) => first.opensAt - second.opensAt);
 
     let lastRenderMinute = null;
-    let selectedSession = null;
+    let studentName = "";
     let completedSession = null;
+    let historyRecords = [];
 
-    function openCheckin(session) {
+    function sessionLabel({course, day}) {
+      const date = new Date(day);
+      return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日 · 星期${weekdays[course.day]} · ${course.start}–${course.end}`;
+    }
+
+    function renderHistory(current) {
+      historyRecords = sessions.filter(session => current > session.closesAt || (session.signed && current >= session.opensAt));
+      exportHistory.disabled = historyRecords.length === 0;
+      historyCount.textContent = historyRecords.length ? `（${historyRecords.length}）` : '';
+      historyEmpty.hidden = historyRecords.length > 0;
+      historyNote.hidden = historyRecords.length === 0;
+      historyList.replaceChildren(...historyRecords.map(session => {
+        const row = document.createElement('li');
+        const details = document.createElement('div');
+        const name = document.createElement('strong');
+        name.textContent = session.course.name;
+        const time = document.createElement('div');
+        time.className = 'desc';
+        time.textContent = sessionLabel(session);
+        details.append(name, time);
+        const status = document.createElement('span');
+        status.className = session.signed ? 'badge live' : 'badge';
+        status.textContent = session.signed ? '已签到' : '未签到';
+        row.append(details, status);
+        return row;
+      }));
+    }
+
+    exportHistory.addEventListener('click', () => {
+      if (!historyRecords.length) return;
+      const rows = [
+        ['日期', '课程', '上课时间', '下课时间', '签到状态'],
+        ...historyRecords.map(({course, day, signed}) => [
+          new Date(day).toISOString().slice(0, 10),
+          course.name,
+          course.start,
+          course.end,
+          signed ? '已签到' : '未签到'
+        ])
+      ];
+      const csv = rows.map(row => row.map(value => '"' + value.replaceAll('"', '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob(['\uFEFF', csv, '\r\n'], {type: 'text/csv;charset=utf-8'});
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      const firstDay = new Date(historyRecords[0].day).toISOString().slice(0, 10);
+      const lastDay = new Date(historyRecords.at(-1).day).toISOString().slice(0, 10);
+      link.download = studentName + '_' + firstDay + '至' + lastDay + '_签到记录.csv';
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    });
+
+    function recordKey(session) {
+      return storagePrefix + 'named:' + studentName + ':' + session.sessionKey;
+    }
+
+    function syncHistory() {
+      if (!studentName) return;
+      try {
+        const storage = window.localStorage;
+        for (const session of sessions) {
+          session.signed = session.temporarySigned || storage.getItem(recordKey(session)) === '1';
+        }
+      } catch {
+        // The current page can still show sign-ins when browser storage is unavailable.
+      }
+      lastRenderMinute = null;
       render();
-      if (!session.active || session.signed) return;
+    }
 
-      if (selectedSession !== session) studentSelect.selectedIndex = 0;
-      selectedSession = session;
-      const {course} = session;
-      courseName.textContent = course.name;
-      courseTime.textContent = `上课时间 ${course.start}–${course.end}`;
-      courseSlot.textContent = `签到时段 ${formatTime(course.opens)}–${formatTime(course.closes)}`;
-      coursePlace.textContent = course.place;
-      session.card.append(openView);
-      openView.hidden = false;
-      studentSelect.focus();
+    function signIn(session) {
+      render();
+      if (!studentName || !session.active || session.signed) return;
+
+      session.signed = true;
+      storageHint.hidden = true;
+      try {
+        window.localStorage.setItem(recordKey(session), '1');
+      } catch {
+        session.temporarySigned = true;
+        storageHint.hidden = false;
+      }
+      completedSession = session;
+      successName.textContent = studentName;
+      successCourse.textContent = session.course.name;
+      checkinView.hidden = true;
+      successView.hidden = false;
+      lastRenderMinute = null;
+      render();
+      successTitle.focus();
+    }
+
+    function lockIdentity(name) {
+      studentName = name;
+      studentSelect.value = name;
+      studentSelect.disabled = true;
+      identityView.hidden = true;
+      checkinView.hidden = false;
+      currentStudent.textContent = '姓名：' + name;
+      syncHistory();
     }
 
     function buildCard(session) {
-      const {course, day} = session;
+      const {course} = session;
       const card = document.createElement('article');
       card.className = 'card schedule-card';
       const date = document.createElement('div');
       date.className = 'schedule-date';
-      const calendar = new Date(day);
-      date.textContent = `${calendar.getUTCMonth() + 1}月${calendar.getUTCDate()}日 · 星期${weekdays[course.day]} · ${course.start}–${course.end}`;
+      date.textContent = sessionLabel(session);
       const heading = document.createElement('div');
       heading.className = 'schedule-heading';
       const title = document.createElement('h2');
@@ -228,12 +334,15 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       place.textContent = course.place;
       const enter = document.createElement('button');
       enter.type = 'button';
-      enter.textContent = '去签到';
-      enter.addEventListener('click', () => openCheckin(session));
-      card.append(date, heading, place, enter);
+      enter.textContent = '签到';
+      enter.addEventListener('click', () => signIn(session));
+      const checkinInfo = document.createElement('div');
+      checkinInfo.className = 'desc';
+      checkinInfo.textContent = '签到时段 ' + formatTime(course.opens) + '–' + formatTime(course.closes) + ' · 签到范围：50 米';
+      card.append(date, heading, place, enter, checkinInfo);
       const following = sessions.find(other => other.card && other.opensAt > session.opensAt);
       courseList.insertBefore(card, following?.card ?? null);
-      Object.assign(session, {card, title, status, enter});
+      Object.assign(session, {card, title, status, enter, checkinInfo});
     }
 
     function render() {
@@ -259,42 +368,50 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 
         session.card.hidden = expired;
         session.enter.hidden = !session.active || session.signed;
+        session.checkinInfo.hidden = !session.active;
         session.status.textContent = session.signed ? '已签到' : session.active ? '签到开放中' : '未到签到时间';
         session.status.classList.toggle('live', session.active || session.signed);
         remaining ||= !expired;
       }
       noSessions.hidden = remaining;
+      renderHistory(current);
 
-      if (selectedSession && !selectedSession.active) {
-        openView.hidden = true;
-        studentSelect.selectedIndex = 0;
-        selectedSession = null;
-      }
     }
 
     studentSelect.selectedIndex = 0;
-    render();
-    setInterval(render, 1000);
-    checkinForm.addEventListener('submit', event => {
-      event.preventDefault();
-      render();
-      if (!selectedSession?.active || selectedSession.signed || !studentSelect.value) return;
+    try {
+      const savedName = window.localStorage.getItem(identityKey);
+      if (names.has(savedName)) lockIdentity(savedName);
+    } catch {
+      identityError.hidden = false;
+    }
+    identityView.hidden = Boolean(studentName);
 
-      selectedSession.signed = true;
-      completedSession = selectedSession;
-      successName.textContent = studentSelect.value;
-      successCourse.textContent = selectedSession.course.name;
-      checkinView.hidden = true;
-      successView.hidden = false;
-      lastRenderMinute = null;
-      render();
-      successTitle.focus();
+    identityForm.addEventListener('submit', event => {
+      event.preventDefault();
+      if (studentName || !names.has(studentSelect.value)) return;
+      try {
+        const storage = window.localStorage;
+        const savedName = storage.getItem(identityKey);
+        if (names.has(savedName)) {
+          lockIdentity(savedName);
+          return;
+        }
+        storage.setItem(identityKey, studentSelect.value);
+        lockIdentity(studentSelect.value);
+      } catch {
+        identityError.hidden = false;
+      }
     });
 
+    setInterval(() => {
+      if (studentName) render();
+    }, 1000);
+    window.addEventListener('pageshow', syncHistory);
+    window.addEventListener('storage', event => {
+      if (event.key === null || event.key.startsWith(storagePrefix)) syncHistory();
+    });
     document.getElementById('returnHome').addEventListener('click', () => {
-      selectedSession = null;
-      openView.hidden = true;
-      studentSelect.selectedIndex = 0;
       successName.textContent = '';
       successCourse.textContent = '';
       successView.hidden = true;
