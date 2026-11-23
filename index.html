@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>25级科学计算班课堂签到</title>
+  <style>
+:root{--blue:#4268e8;--ink:#18233a;--muted:#728099;--edge:#e6ebf3;--bg:#f5f7fb;--good:#169b69}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5}main{max-width:520px;margin:auto;padding:20px 16px 70px}.nav{display:flex;justify-content:space-between;align-items:center;padding:4px 3px 21px}.logo{display:flex;gap:10px;align-items:center;font-weight:750;font-size:16px}.mark{height:35px;width:35px;background:var(--blue);border-radius:11px;color:white;display:grid;place-items:center;font-size:21px}.chip{font-size:12px;border-radius:30px;background:#e8edff;padding:6px 11px;color:#405ad0;font-weight:650}.headline{font-size:27px;font-weight:780;letter-spacing:-.7px;margin:7px 0 5px}.desc{color:var(--muted);font-size:13px}.card{background:#fff;border:1px solid var(--edge);border-radius:23px;box-shadow:0 7px 25px #142b6d09;margin-top:17px;overflow:hidden}.card-body{padding:22px}.badge{display:inline-flex;align-items:center;gap:7px;border-radius:30px;padding:7px 11px;font-size:12px;font-weight:700;background:#f1f4f9;color:#66758c}.badge.live{color:#087956;background:#dff8ed}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.course{font-size:24px;line-height:1.35;font-weight:790;margin:13px 0 8px}.divider{height:1px;background:#edf0f6;margin:19px 0}.info{display:flex;align-items:start;gap:12px;margin:13px 0;font-size:14px}.info i{width:27px;height:27px;border-radius:9px;background:#edf2ff;color:#5370de;font-style:normal;display:grid;place-items:center;flex-shrink:0}.info b{display:block;font-size:13px;font-weight:700}.info span{color:var(--muted);font-size:12px}.form{margin-top:18px}.field{display:block;font-size:13px;font-weight:750;margin-bottom:8px}button{width:100%;border:0;border-radius:14px;background:var(--blue);color:white;font-weight:750;font-size:15px;padding:15px;margin-top:14px;cursor:pointer}.footer{padding:26px 8px;text-align:center;font-size:11px;color:#97a3b5} 
+
+select{appearance:none;width:100%;border:1px solid #dfe5ef;border-radius:13px;padding:13px 42px 13px 14px;font:inherit;color:var(--ink);background:#fafbfe}
+.select-wrap{position:relative}
+.select-wrap::after{content:"";position:absolute;right:17px;top:calc(50% - 6px);width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.course-info{margin-bottom:0}
+.checkin-form{margin-top:19px}
+.desc,.field,.info b,.footer{font-size:14px}
+.success-card{text-align:center;padding:36px 22px 24px}
+.success-mark{display:grid;place-items:center;width:88px;height:88px;margin:0 auto 16px;background:#dff8ed;color:#087956;border-radius:50%;font-size:52px;font-weight:750;line-height:1}
+.success-title{font-size:32px;line-height:1.25;margin:0;color:#087956}
+.success-details{margin:22px 0 0;padding:14px 16px;border-radius:14px;background:#f5f7fb;text-align:left}
+.success-details div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}
+.success-details div+div{margin-top:9px}
+.success-details dt{color:var(--muted);font-size:14px}
+.success-details dd{margin:0;font-weight:650;overflow-wrap:anywhere}
+.success-card button{margin-top:20px}
+.course-list{display:grid;gap:12px;margin-top:17px}
+.schedule-card{margin:0;padding:15px 16px}
+.schedule-date{font-size:14px;color:var(--muted)}
+.schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0}
+.schedule-name{min-width:0;margin:0;font-size:17px;overflow-wrap:anywhere}
+.schedule-heading .badge{flex:none;white-space:nowrap}
+.schedule-card>button{width:auto;padding:9px 14px;margin-top:10px}
+.schedule-card>section{box-shadow:none}
+</style>
+</head>
+<body>
+  <main>
+    <header class="nav">
+      <div class="logo"><div class="mark" aria-hidden="true">✓</div>课堂签到</div>
+    </header>
+    <div id="checkinView">
+      <h1 class="headline">25级科学计算班课堂签到</h1>
+      <div class="desc" id="dateLine"></div>
+      <div id="courseList" class="course-list"></div>
+      <p class="desc" id="noSessions" hidden>当前课表暂无后续签到安排。</p>
+      <section class="card" id="openView" aria-labelledby="courseName" hidden>
+        <div class="card-body">
+          <div class="badge live"><span class="dot" aria-hidden="true"></span>签到开放中</div>
+          <h2 class="course" id="courseName"></h2>
+          <div class="info">
+            <i aria-hidden="true">◷</i><div><b id="courseTime"></b><span id="courseSlot"></span></div>
+          </div>
+          <div class="info">
+            <i aria-hidden="true">⌖</i><div><b id="coursePlace"></b></div>
+          </div>
+          <div class="info course-info">
+            <i aria-hidden="true">◎</i><div><b>签到范围：50 米</b></div>
+          </div>
+          <form class="checkin-form" id="checkinForm" autocomplete="off">
+            <label class="field" for="studentSelect">选择姓名</label>
+            <div class="select-wrap">
+              <select id="studentSelect" required>
+                <option value="" selected disabled>请选择你的姓名</option>
+                <option>李天翼</option>
+                <option>王玺杰</option>
+                <option>孔佳睿</option>
+                <option>司嘉晨</option>
+                <option>王胤祺</option>
+                <option>涂磊</option>
+                <option>苏启航</option>
+                <option>刘捷轲</option>
+                <option>孙远泽</option>
+                <option>纪奥林</option>
+                <option>梁臻卓</option>
+                <option>郑奕</option>
+                <option>尹子昂</option>
+                <option>马坤</option>
+                <option>王子迈</option>
+                <option>侯鲁鑫</option>
+                <option>谢鑫</option>
+                <option>黄海晨</option>
+                <option>沈煜杰</option>
+                <option>巩昊睿</option>
+                <option>黄子晨</option>
+                <option>李坤钰</option>
+                <option>李杰麟</option>
+                <option>雷鸿康</option>
+                <option>刘晓阳</option>
+                <option>胡鑫涛</option>
+                <option>冯源</option>
+                <option>田士鑫</option>
+                <option>段菊华</option>
+                <option>王天乐</option>
+                <option>王钰皓</option>
+                <option>徐可轩</option>
+                <option>袁铭楷</option>
+                <option>任浩阳</option>
+                <option>林恺熙</option>
+                <option>郭景翔</option>
+                <option>陈柯嘉</option>
+                <option>白依卉如</option>
+                <option>范晓蕾</option>
+              </select>
+            </div>
+            <button type="submit">签到</button>
+          </form>
+        </div>
+      </section>
+    </div>
+    <section class="card success-card" id="successView" aria-labelledby="successTitle" hidden>
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <h1 class="success-title" id="successTitle" tabindex="-1">签到成功</h1>
+      <dl class="success-details">
+        <div><dt>姓名</dt><dd id="successName"></dd></div>
+        <div><dt>课程</dt><dd id="successCourse"></dd></div>
+      </dl>
+      <button type="button" id="returnHome">返回首页</button>
+    </section>
+  </main>
+  <script>
+    const slots = [['08:00','09:50'],['10:10','12:00'],['14:00','15:50'],['16:10','18:00'],['19:00','20:50']];
+    const schedule = [{"day":1,"slot":1,"duration":1,"name":"C++程序设计","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":3,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":4,"slot":1,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":5,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":1,"slot":2,"duration":1,"name":"C++程序设计","weeks":[1,3,5,7,9,11,13,15],"place":"威海竹风楼201"},{"day":1,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":3,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":4,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼553"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":3,"duration":1,"name":"C++程序设计","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":4,"slot":3,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[2,4,6],"place":"威海图西教学楼322"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[8,10,12,14,16],"place":"威海学思楼558"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[1,2,3,4,5,6,7],"place":"威海图西教学楼322"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[8,9,10,11,12,13,14,15,16],"place":"威海学思楼558"},{"day":3,"slot":4,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"}];
+    const dayLength = 86_400_000;
+    const semesterStart = Date.parse('2026-09-07T00:00:00Z');
+    const lastTeachingWeek = Math.max(...schedule.flatMap(course => course.weeks));
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const clock = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    });
+
+    function toMinutes(time) {
+      const [hour, minute] = time.split(':').map(Number);
+      return hour * 60 + minute;
+    }
+
+    function formatTime(minutes) {
+      const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
+      const minute = String(minutes % 60).padStart(2, '0');
+      return `${hour}:${minute}`;
+    }
+
+    const courses = schedule.map(course => {
+      const start = slots[course.slot - 1][0];
+      const end = slots[course.slot + course.duration - 2][1];
+      return {
+        ...course, start, end,
+        opens: toMinutes(start) - 10,
+        closes: toMinutes(end) + 10
+      };
+    }).sort((first, second) => first.opens - second.opens);
+
+    const courseList = document.getElementById('courseList');
+    const noSessions = document.getElementById('noSessions');
+    const studentSelect = document.getElementById('studentSelect');
+    const checkinForm = document.getElementById('checkinForm');
+    const checkinView = document.getElementById('checkinView');
+    const openView = document.getElementById('openView');
+    const dateLine = document.getElementById('dateLine');
+    const courseName = document.getElementById('courseName');
+    const courseTime = document.getElementById('courseTime');
+    const courseSlot = document.getElementById('courseSlot');
+    const coursePlace = document.getElementById('coursePlace');
+    const successView = document.getElementById('successView');
+    const successTitle = document.getElementById('successTitle');
+    const successName = document.getElementById('successName');
+    const successCourse = document.getElementById('successCourse');
+
+    function teachingWeek(day) {
+      return Math.floor((day - semesterStart) / (7 * dayLength)) + 1;
+    }
+
+    const sessions = courses.flatMap(course => course.weeks.map(week => {
+      const day = semesterStart + ((week - 1) * 7 + course.day - 1) * dayLength;
+      return {
+        course, day,
+        opensAt: day + course.opens * 60_000,
+        closesAt: day + course.closes * 60_000,
+        signed: false
+      };
+    })).sort((first, second) => first.opensAt - second.opensAt);
+
+    let lastRenderMinute = null;
+    let selectedSession = null;
+    let completedSession = null;
+
+    function openCheckin(session) {
+      render();
+      if (!session.active || session.signed) return;
+
+      if (selectedSession !== session) studentSelect.selectedIndex = 0;
+      selectedSession = session;
+      const {course} = session;
+      courseName.textContent = course.name;
+      courseTime.textContent = `上课时间 ${course.start}–${course.end}`;
+      courseSlot.textContent = `签到时段 ${formatTime(course.opens)}–${formatTime(course.closes)}`;
+      coursePlace.textContent = course.place;
+      session.card.append(openView);
+      openView.hidden = false;
+      studentSelect.focus();
+    }
+
+    function buildCard(session) {
+      const {course, day} = session;
+      const card = document.createElement('article');
+      card.className = 'card schedule-card';
+      const date = document.createElement('div');
+      date.className = 'schedule-date';
+      const calendar = new Date(day);
+      date.textContent = `${calendar.getUTCMonth() + 1}月${calendar.getUTCDate()}日 · 星期${weekdays[course.day]} · ${course.start}–${course.end}`;
+      const heading = document.createElement('div');
+      heading.className = 'schedule-heading';
+      const title = document.createElement('h2');
+      title.className = 'schedule-name';
+      title.tabIndex = -1;
+      title.textContent = course.name;
+      const status = document.createElement('span');
+      status.className = 'badge';
+      heading.append(title, status);
+      const place = document.createElement('div');
+      place.className = 'desc';
+      place.textContent = course.place;
+      const enter = document.createElement('button');
+      enter.type = 'button';
+      enter.textContent = '去签到';
+      enter.addEventListener('click', () => openCheckin(session));
+      card.append(date, heading, place, enter);
+      const following = sessions.find(other => other.card && other.opensAt > session.opensAt);
+      courseList.insertBefore(card, following?.card ?? null);
+      Object.assign(session, {card, title, status, enter});
+    }
+
+    function render() {
+      const {year, month, day, hour, minute} = Object.fromEntries(
+        clock.formatToParts(new Date()).map(part => [part.type, part.value])
+      );
+      const today = Date.UTC(Number(year), Number(month) - 1, Number(day));
+      const current = today + (Number(hour) * 60 + Number(minute)) * 60_000;
+      if (current === lastRenderMinute) return;
+      lastRenderMinute = current;
+
+      const weekday = weekdays[new Date(today).getUTCDay()];
+      const week = teachingWeek(today);
+      const weekLabel = week >= 1 && week <= lastTeachingWeek ? `第 ${week} 周` : '非教学周';
+      dateLine.textContent = `${Number(month)}月${Number(day)}日 · 星期${weekday} · ${hour}:${minute} · ${weekLabel}`;
+
+      let remaining = false;
+      for (const session of sessions) {
+        const expired = current > session.closesAt;
+        session.active = !expired && current >= session.opensAt;
+        if (!session.card && !expired) buildCard(session);
+        if (!session.card) continue;
+
+        session.card.hidden = expired;
+        session.enter.hidden = !session.active || session.signed;
+        session.status.textContent = session.signed ? '已签到' : session.active ? '签到开放中' : '未到签到时间';
+        session.status.classList.toggle('live', session.active || session.signed);
+        remaining ||= !expired;
+      }
+      noSessions.hidden = remaining;
+
+      if (selectedSession && !selectedSession.active) {
+        openView.hidden = true;
+        studentSelect.selectedIndex = 0;
+        selectedSession = null;
+      }
+    }
+
+    studentSelect.selectedIndex = 0;
+    render();
+    setInterval(render, 1000);
+    checkinForm.addEventListener('submit', event => {
+      event.preventDefault();
+      render();
+      if (!selectedSession?.active || selectedSession.signed || !studentSelect.value) return;
+
+      selectedSession.signed = true;
+      completedSession = selectedSession;
+      successName.textContent = studentSelect.value;
+      successCourse.textContent = selectedSession.course.name;
+      checkinView.hidden = true;
+      successView.hidden = false;
+      lastRenderMinute = null;
+      render();
+      successTitle.focus();
+    });
+
+    document.getElementById('returnHome').addEventListener('click', () => {
+      selectedSession = null;
+      openView.hidden = true;
+      studentSelect.selectedIndex = 0;
+      successName.textContent = '';
+      successCourse.textContent = '';
+      successView.hidden = true;
+      checkinView.hidden = false;
+      render();
+      if (!completedSession.card.hidden) completedSession.title.focus();
+      completedSession = null;
+    });
+  </script>
+</body>
+</html>
