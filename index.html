@@ -317,6 +317,17 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       }
     }
 
+    function locationError(place, latitude, longitude) {
+      const sites = {'学思楼':[37.52869813,122.05675731], '竹风楼':[37.53166883,122.05585195], '图西教学楼':[37.53091131,122.05445117], '图东教学楼':[37.53095201,122.05593325], '北衡楼':[37.52700968,122.05823245]};
+      const key = Object.keys(sites).find(name => place?.includes(name));
+      if (!key) return '本课次尚未设置定位地点。';
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude)>90 || Math.abs(longitude)>180) return '请允许定位后再签到。';
+      const [lat, lon] = sites[key];
+      const rad = Math.PI / 180;
+      const a = Math.sin((latitude-lat)*rad/2)**2 + Math.cos(latitude*rad)*Math.cos(lat*rad)*Math.sin((longitude-lon)*rad/2)**2;
+      return 12742000*Math.asin(Math.sqrt(Math.min(1,a))) <= 500 ? '' : '当前位置超出本课次签到范围。';
+    }
+
     async function signIn(session) {
       render();
       if (!studentName || !statusReady || !session.active || session.pending || session.signed || session.unavailable) return;
@@ -326,7 +337,24 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       session.enter.textContent = '正在同步…';
       session.error.textContent = '';
       try {
-        const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey});
+        session.enter.textContent = '正在定位…';
+        if (!navigator.geolocation) {
+          session.error.textContent = '当前环境无法定位，请用手机浏览器打开。';
+          return;
+        }
+        let coords;
+        try {
+          const position = await new Promise((resolve,reject) => navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+          coords = position.coords;
+        } catch (error) {
+          session.error.textContent = error.code === 1 ? '请允许位置权限后重试；旧版安卓 App 请改用浏览器或更新。' : '定位失败，请到窗边或室外重试。';
+          return;
+        }
+        const {latitude, longitude} = coords;
+        const problem = locationError(session.practice ? '学思楼' : session.course.place, latitude, longitude);
+        if (problem) { session.error.textContent = problem; return; }
+        session.enter.textContent = '正在同步…';
+        const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey, latitude, longitude});
         if (!response.ok || result.ok !== true) {
           session.error.textContent = result.error || '签到同步失败，请重试。';
           return;
