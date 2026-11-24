@@ -128,7 +128,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     </section>
   </main>
   <script>
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || /; wv\)/.test(navigator.userAgent);
     const loadedPage = standalone ? [
       document.head.innerHTML,
       document.querySelector('main').outerHTML,
