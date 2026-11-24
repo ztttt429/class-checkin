@@ -43,10 +43,9 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 .history-empty{margin:0 0 14px}
 .history-export{width:auto;margin:0 0 12px;padding:9px 14px}
 .history-export:disabled{opacity:.5;cursor:default}
-.sign-progress:not(:empty){display:flex;align-items:center;gap:12px;margin:12px 0;padding:14px 16px;border-radius:12px;background:#edf2ff;color:#2543a3;font-size:18px;font-weight:700}
-.sign-progress:not(:empty)::before{content:'';width:16px;height:16px;border:3px solid #adbfef;border-top-color:#2543a3;border-radius:50%;animation:sign-spin 1s linear infinite}
-@keyframes sign-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.sign-progress:not(:empty)::before{animation:none}}
+#progressView{padding:42px 20px;text-align:center}
+#progressTitle{font-size:28px;margin:12px 0}
+#progressHint{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -123,6 +122,12 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       <div id="courseList" class="course-list"></div>
       <p class="desc" id="noSessions" hidden>当前课表暂无后续签到安排。</p>
     </div>
+    <section class="card" id="progressView" hidden>
+      <p id="progressStep" class="desc"></p>
+      <h1 id="progressTitle" tabindex="-1" role="status"></h1>
+      <p id="progressHint"></p>
+      <button type="button" id="progressBack" hidden>返回首页</button>
+    </section>
     <section class="card success-card" id="successView" aria-labelledby="successTitle" hidden>
       <div class="success-mark" aria-hidden="true">✓</div>
       <h1 class="success-title" id="successTitle" tabindex="-1">签到成功</h1>
@@ -332,13 +337,33 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       return 12742000*Math.asin(Math.sqrt(Math.min(1,a))) <= 500 ? '' : '当前位置超出本课次签到范围。';
     }
 
+    const progress = document.getElementById('progressView');
+    const progressBack = document.getElementById('progressBack');
+    function showProgress(step, title, hint) {
+      checkinView.hidden = true;
+      progress.hidden = false;
+      document.getElementById('progressStep').textContent = '第 ' + step + ' 步 / 共 2 步';
+      const heading = document.getElementById('progressTitle');
+      heading.textContent = title;
+      document.getElementById('progressHint').textContent = hint;
+      heading.focus();
+      window.scrollTo(0, 0);
+    }
+    progressBack.onclick = () => {
+      progress.hidden = true;
+      checkinView.hidden = false;
+      progressBack.hidden = true;
+      syncHistory();
+    };
+
     async function signIn(session) {
       render();
       if (!studentName || !statusReady || !session.active || session.pending || session.signed || session.unavailable) return;
 
       session.pending = true;
       session.enter.disabled = true;
-      session.progress.textContent = '第 1 步 / 共 2 步　正在校订位置';
+      let step = 1;
+      showProgress(step, '正在校验位置', '请允许定位，校验通过后将上传签到数据。');
       session.error.textContent = '';
       try {
         session.enter.textContent = '正在定位…';
@@ -358,7 +383,8 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         const problem = locationError(session.practice ? '学思楼' : session.course.place, latitude, longitude);
         if (problem) { session.error.textContent = problem; return; }
         session.enter.textContent = '上传中…';
-        session.progress.textContent = '第 2 步 / 共 2 步　正在上传数据';
+        step = 2;
+        showProgress(step, '正在上传数据', '位置校验已通过，正在等待签到结果。');
         const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey, latitude, longitude});
         if (!response.ok || result.ok !== true) {
           session.error.textContent = result.error || '签到同步失败，请重试。';
@@ -368,11 +394,15 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         session.error.textContent = '签到同步失败，请重试。';
         return;
       } finally {
-        session.progress.textContent = '';
+        if (session.error.textContent) {
+          showProgress(step, step === 1 ? '位置校验失败' : '签到上传失败', session.error.textContent);
+          progressBack.hidden = false;
+        }
         session.pending = false;
         session.enter.disabled = false;
         session.enter.textContent = '签到';
       }
+      progress.hidden = true;
       session.signed = true;
       completedSession = session;
       successName.textContent = studentName;
@@ -424,10 +454,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         : '签到时段 ' + formatTime(course.opens) + '–' + formatTime(course.closes) + ' · 签到范围：50 米';
       card.append(date, heading);
       if (course.place) card.append(place);
-      session.progress = document.createElement('div');
-      session.progress.className = 'sign-progress';
-      session.progress.setAttribute('role', 'status');
-      card.append(enter, session.progress, checkinInfo);
+      card.append(enter, checkinInfo);
       session.error = document.createElement('div');
       session.error.className = 'desc';
       session.error.setAttribute('role', 'status');
@@ -539,7 +566,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     }, 1000);
     let checkingPage = false;
     async function checkForPageUpdate() {
-      if (!loadedPage || checkingPage || !successView.hidden || sessions.some(session => session.pending)) return;
+      if (!progress.hidden || !loadedPage || checkingPage || !successView.hidden || sessions.some(session => session.pending)) return;
       checkingPage = true;
       try {
         const url = new URL(window.location.href);
