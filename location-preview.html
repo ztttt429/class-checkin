@@ -27,9 +27,11 @@
 </head>
 <body>
   <main>
-    <h1>定位预览</h1>
-    <p>试试浏览器能读到的经纬度。结果只显示在当前页面。</p>
+    <h1>学思楼定位测试</h1>
+    <p>参照点取自地图截图。定位和测试结果仅显示在本页。</p>
     <section class="card" aria-label="定位操作">
+      <label for="radius">通过半径（米）</label>
+      <input id="radius" type="number" inputmode="decimal" min="0" step="any" value="50" style="display:block;width:100%;font:inherit;padding:.6rem;margin:.4rem 0 1rem">
       <div class="actions">
         <button type="button" class="primary" id="locate">读取我的定位</button>
         <button type="button" id="sample">查看模拟数据</button>
@@ -38,7 +40,9 @@
     </section>
     <section class="card" id="result" aria-labelledby="result-title" hidden>
       <h2 id="result-title"></h2>
+      <p id="verdict" role="status" style="font-weight:700"></p>
       <dl>
+        <div><dt>距学思楼参照点</dt><dd id="distance"></dd></div>
         <div><dt>纬度</dt><dd id="latitude"></dd></div>
         <div><dt>经度</dt><dd id="longitude"></dd></div>
         <div><dt>定位精度</dt><dd id="accuracy"></dd></div>
@@ -62,11 +66,32 @@
       status.hidden = !message;
     }
 
+    const reference = {latitude: 37.52869813, longitude: 122.05675731};
+    const radius = document.getElementById('radius');
+    let distance;
+    function updateVerdict() {
+      if (distance === undefined) return;
+      const limit = radius.valueAsNumber;
+      document.getElementById('verdict').textContent = !Number.isFinite(limit) || limit < 0
+        ? '请输入零或正数作为通过半径'
+        : (distance <= limit ? '通过' : '未通过') + ' · 半径 ' + limit + ' 米';
+    }
+    radius.addEventListener('input', updateVerdict);
+    function distanceToReference(lat, lon) {
+      const rad = Math.PI / 180;
+      const a = Math.sin((lat - reference.latitude) * rad / 2) ** 2
+        + Math.cos(lat * rad) * Math.cos(reference.latitude * rad)
+        * Math.sin((lon - reference.longitude) * rad / 2) ** 2;
+      return 12742000 * Math.asin(Math.sqrt(Math.min(1, a)));
+    }
     function showResult(title, {latitude, longitude, accuracy}) {
       document.getElementById('result-title').textContent = title;
       document.getElementById('latitude').textContent = latitude.toFixed(6) + '°';
       document.getElementById('longitude').textContent = longitude.toFixed(6) + '°';
       document.getElementById('accuracy').textContent = '约 ±' + Math.ceil(accuracy) + ' 米';
+      distance = distanceToReference(latitude, longitude);
+      document.getElementById('distance').textContent = distance.toFixed(1) + ' 米';
+      updateVerdict();
       result.hidden = false;
     }
 
