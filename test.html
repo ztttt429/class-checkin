@@ -55,7 +55,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     <span class="chip">测试模式</span>
   </header>
   <h1 class="headline">测试签到</h1>
-  <p class="desc">使用虚拟姓名体验签到。操作只保存在本机浏览器，不会写入腾讯表格。</p>
+  <p class="desc" id="testDescription">使用虚拟姓名体验签到。</p>
   <section class="card" id="testView">
     <form id="testForm" class="card-body">
       <label class="field" for="testName">测试姓名</label>
@@ -71,7 +71,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       </div>
       <p class="desc" id="testStatus" role="status"></p>
       <button id="testSubmit" type="submit">测试签到</button>
-      <button id="testReset" type="button" hidden>清除本次测试记录</button>
+      <button id="testReset" type="button" hidden>重新测试</button>
     </form>
   </section>
   <section class="card success-card" id="testSuccess" hidden>
@@ -94,8 +94,15 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
   const reset = document.getElementById('testReset');
   const view = document.getElementById('testView');
   const success = document.getElementById('testSuccess');
+  const endpoint = 'https://1466693390-i6sh7hemrh.ap-guangzhou.tencentscf.com/test-checkin';
+  const accessKey = new URLSearchParams(location.hash.slice(1)).get('key');
+  const mode = accessKey ? 'synced' : 'local';
   const remembered = new Set();
-  const key = () => 'class-checkin:test:' + JSON.stringify([nameField.value, lessonField.value]);
+  const key = () => 'class-checkin:test:' + mode + ':' + JSON.stringify([nameField.value, lessonField.value]);
+  let pending = false;
+  document.getElementById('testDescription').textContent = accessKey
+    ? '使用虚拟姓名签到，结果会同步到腾讯表格的「测试」工作表。'
+    : '当前为本机预览。打开带授权的测试链接即可同步到腾讯表格。';
 
   function isSigned() {
     if (remembered.has(key())) return true;
@@ -105,9 +112,11 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 
   function render() {
     const signed = Boolean(nameField.value) && isSigned();
-    submit.disabled = signed;
+    submit.disabled = pending || signed;
+    nameField.disabled = pending;
+    lessonField.disabled = pending;
     reset.hidden = !signed;
-    submit.textContent = signed ? '已签到' : '测试签到';
+    submit.textContent = pending ? '正在同步…' : signed ? '已签到' : '测试签到';
     status.textContent = signed ? '这个测试姓名已完成本课次的签到。' : '';
   }
 
@@ -124,13 +133,43 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       submit.focus();
     }
   });
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (!nameField.value || isSigned()) return;
-    remembered.add(key());
-    try { localStorage.setItem(key(), '1'); }
+    if (pending || !nameField.value || isSigned()) return;
+    const name = nameField.value;
+    const lesson = lessonField.value;
+    const record = key();
+    let receipt = name + ' · ' + lesson;
+    if (accessKey) {
+      pending = true;
+      render();
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'omit',
+          headers: { Authorization: 'Bearer ' + accessKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({name, lesson})
+        });
+        if (response.status === 401) throw new Error('请打开有效的测试授权链接。');
+        const result = await response.json();
+        if (!response.ok || result.ok !== true || !/^[BCE][234]$/.test(result.cell)) {
+          throw new Error('腾讯表格同步失败，请重试。');
+        }
+        receipt += ' · 已同步到腾讯表格 ' + result.cell;
+      } catch (error) {
+        pending = false;
+        render();
+        status.textContent = error.message === '请打开有效的测试授权链接。'
+          ? error.message
+          : '腾讯表格同步失败，请重试。';
+        return;
+      }
+      pending = false;
+    }
+    remembered.add(record);
+    try { localStorage.setItem(record, '1'); }
     catch { /* Retain the result in the open page if storage is blocked. */ }
-    document.getElementById('testReceipt').textContent = nameField.value + ' · ' + lessonField.value;
+    document.getElementById('testReceipt').textContent = receipt;
     view.hidden = true;
     success.hidden = false;
     document.getElementById('testSuccessTitle').focus();
