@@ -105,10 +105,12 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       <h1 class="headline">25级科学计算班课堂签到</h1>
       <div class="desc" id="currentStudent"></div>
       <div class="desc" id="dateLine"></div>
+      <p class="desc" id="sheetStatus" role="status" hidden></p>
+      <button type="button" class="history-export" id="refreshRecords">刷新签到状态</button>
       <details class="card history-card" id="historyView">
         <summary>历史签到记录<span id="historyCount"></span></summary>
         <p class="desc history-empty" id="historyEmpty">暂无签到记录。</p>
-        <p class="desc history-empty" id="historyNote" hidden>从 11 月 24 日起，状态以本机浏览器的签到记录为准。</p>
+        <p class="desc history-empty" id="historyNote" hidden>从 11 月 24 日起，签到状态以腾讯表格为准。</p>
         <button class="history-export" id="exportHistory" type="button" disabled>导出 CSV</button>
         <ul class="history-list" id="historyList"></ul>
       </details>
@@ -122,7 +124,6 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         <div><dt>姓名</dt><dd id="successName"></dd></div>
         <div><dt>课程</dt><dd id="successCourse"></dd></div>
       </dl>
-      <p class="desc" id="storageHint" hidden>浏览器未能保存这次签到，重新打开页面后可能需要再签到。</p>
       <button type="button" id="returnHome">返回首页</button>
     </section>
   </main>
@@ -175,7 +176,8 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     const historyCount = document.getElementById('historyCount');
     const historyEmpty = document.getElementById('historyEmpty');
     const historyNote = document.getElementById('historyNote');
-    const storageHint = document.getElementById('storageHint');
+    const sheetStatus = document.getElementById('sheetStatus');
+    const refreshRecords = document.getElementById('refreshRecords');
     const studentSelect = document.getElementById('studentSelect');
     const identityView = document.getElementById('identityView');
     const identityForm = document.getElementById('identityForm');
@@ -217,6 +219,8 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     let studentName = "";
     let completedSession = null;
     let historyRecords = [];
+    let statusReady = false;
+    let readingStatus = false;
 
     function sessionLabel({course, day, practice}) {
       if (practice) return '随时可以签到';
@@ -225,10 +229,11 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     }
 
     function renderHistory(current) {
-      historyRecords = sessions.filter(session => current > session.closesAt || (session.signed && current >= session.opensAt));
+      historyRecords = statusReady ? sessions.filter(session => current > session.closesAt || (session.signed && current >= session.opensAt)) : [];
       exportHistory.disabled = historyRecords.length === 0;
       historyCount.textContent = historyRecords.length ? `（${historyRecords.length}）` : '';
       historyEmpty.hidden = historyRecords.length > 0;
+      historyEmpty.textContent = statusReady ? '暂无签到记录。' : '当前无法显示签到记录。';
       historyNote.hidden = historyRecords.length === 0;
       historyList.replaceChildren(...historyRecords.map(session => {
         const row = document.createElement('li');
@@ -241,7 +246,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         details.append(name, time);
         const status = document.createElement('span');
         status.className = session.signed ? 'badge live' : 'badge';
-        status.textContent = session.signed ? '已签到' : '未签到';
+        status.textContent = session.unavailable ? '状态不可用' : session.signed ? '已签到' : '未签到';
         row.append(details, status);
         return row;
       }));
@@ -251,12 +256,12 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       if (!historyRecords.length) return;
       const rows = [
         ['日期', '课程', '上课时间', '下课时间', '签到状态'],
-        ...historyRecords.map(({course, day, signed}) => [
+        ...historyRecords.map(({course, day, signed, unavailable}) => [
           new Date(day).toISOString().slice(0, 10),
           course.name,
           course.start,
           course.end,
-          signed ? '已签到' : '未签到'
+          unavailable ? '状态不可用' : signed ? '已签到' : '未签到'
         ])
       ];
       const csv = rows.map(row => row.map(value => '"' + value.replaceAll('"', '""') + '"').join(',')).join('\r\n');
@@ -273,59 +278,59 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
     });
 
-    function recordKey(session) {
-      return storagePrefix + 'named:' + studentName + ':' + session.sessionKey;
-    }
-
-    function syncHistory() {
-      if (!studentName) return;
-      try {
-        const storage = window.localStorage;
-        for (const session of sessions) {
-          session.signed = session.temporarySigned || storage.getItem(recordKey(session)) === '1';
-        }
-      } catch {
-        // The current page can still show sign-ins when browser storage is unavailable.
-      }
+    async function syncHistory() {
+      if (!studentName || readingStatus || sessions.some(session => session.pending)) return;
+      readingStatus = true;
+      statusReady = false;
+      refreshRecords.disabled = true;
+      sheetStatus.textContent = '正在读取腾讯表格…';
+      sheetStatus.hidden = false;
       lastRenderMinute = null;
       render();
+      try {
+        const {response, result} = await requestCloud('/course-status', {name: studentName});
+        if (!response.ok || !Array.isArray(result.signed) || !Array.isArray(result.unavailable)) throw new Error();
+        const signed = new Set(result.signed);
+        const unavailable = new Set(result.unavailable);
+        for (const session of sessions) {
+          session.signed = signed.has(session.sessionKey);
+          session.unavailable = unavailable.has(session.sessionKey);
+        }
+        statusReady = true;
+        sheetStatus.hidden = true;
+      } catch {
+        sheetStatus.textContent = '暂时无法读取腾讯表格，请点刷新签到状态重试。';
+      } finally {
+        readingStatus = false;
+        refreshRecords.disabled = false;
+        lastRenderMinute = null;
+        render();
+      }
     }
 
     async function signIn(session) {
       render();
-      if (!studentName || !session.active || session.signed || session.pending) return;
+      if (!studentName || !statusReady || !session.active || session.pending || session.signed || session.unavailable) return;
 
-      if (session.practice) {
-        session.pending = true;
-        session.enter.disabled = true;
-        session.enter.textContent = '正在同步…';
-        session.error.textContent = '';
-        try {
-          const previousBinding = storedBinding(window.localStorage);
-          const token = previousBinding?.name === studentName ? previousBinding.token : undefined;
-          const {response, result} = await requestCloud('/practice-checkin', {name: studentName, token});
-          if (!token && (response.status === 400 || response.status === 403)) {
-            session.error.textContent = '当前可以选姓名，模拟签到同步暂时需要原有绑定。';
-            return;
-          }
-          if (!response.ok || result.ok !== true) throw new Error();
-        } catch {
-          session.error.textContent = '模拟签到同步失败，请重试。';
+      session.pending = true;
+      session.enter.disabled = true;
+      session.enter.textContent = '正在同步…';
+      session.error.textContent = '';
+      try {
+        const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey});
+        if (!response.ok || result.ok !== true) {
+          session.error.textContent = result.error || '签到同步失败，请重试。';
           return;
-        } finally {
-          session.pending = false;
-          session.enter.disabled = false;
-          session.enter.textContent = '签到';
         }
+      } catch {
+        session.error.textContent = '签到同步失败，请重试。';
+        return;
+      } finally {
+        session.pending = false;
+        session.enter.disabled = false;
+        session.enter.textContent = '签到';
       }
       session.signed = true;
-      storageHint.hidden = true;
-      try {
-        window.localStorage.setItem(recordKey(session), '1');
-      } catch {
-        session.temporarySigned = true;
-        storageHint.hidden = false;
-      }
       completedSession = session;
       successName.textContent = studentName;
       successCourse.textContent = session.course.name;
@@ -377,12 +382,10 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       card.append(date, heading);
       if (course.place) card.append(place);
       card.append(enter, checkinInfo);
-      if (session.practice) {
-        session.error = document.createElement('div');
-        session.error.className = 'desc';
-        session.error.setAttribute('role', 'status');
-        card.append(session.error);
-      }
+      session.error = document.createElement('div');
+      session.error.className = 'desc';
+      session.error.setAttribute('role', 'status');
+      card.append(session.error);
       const following = sessions.find(other => other.card && other.opensAt > session.opensAt);
       courseList.insertBefore(card, following?.card ?? null);
       Object.assign(session, {card, title, status, enter, checkinInfo});
@@ -410,10 +413,10 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         if (!session.card) continue;
 
         session.card.hidden = expired;
-        session.enter.hidden = !session.active || session.signed;
+        session.enter.hidden = !statusReady || !session.active || session.signed || session.unavailable;
         session.checkinInfo.hidden = !session.active;
-        session.status.textContent = session.signed ? '已签到' : session.active ? '签到开放中' : '未到签到时间';
-        session.status.classList.toggle('live', session.active || session.signed);
+        session.status.textContent = !statusReady ? '待查询' : session.unavailable ? '状态不可用' : session.signed ? '已签到' : session.active ? '未签到' : '未到签到时间';
+        session.status.classList.toggle('live', statusReady && !session.unavailable && session.signed);
         remaining ||= !expired;
       }
       noSessions.hidden = remaining;
@@ -488,16 +491,17 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     setInterval(() => {
       if (studentName) render();
     }, 1000);
-    window.addEventListener('pageshow', syncHistory);
-    window.addEventListener('storage', event => {
-      if (event.key === null || event.key.startsWith(storagePrefix)) syncHistory();
+    window.addEventListener('pageshow', event => { if (event.persisted) syncHistory(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !checkinView.hidden) syncHistory();
     });
+    refreshRecords.addEventListener('click', syncHistory);
     document.getElementById('returnHome').addEventListener('click', () => {
       successName.textContent = '';
       successCourse.textContent = '';
       successView.hidden = true;
       checkinView.hidden = false;
-      render();
+      syncHistory();
       if (!completedSession.card.hidden) completedSession.title.focus();
       completedSession = null;
     });
