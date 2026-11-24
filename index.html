@@ -51,7 +51,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     <section class="card" id="identityView" aria-labelledby="identityTitle" hidden>
       <form class="card-body" id="identityForm" autocomplete="off">
         <h1 class="headline" id="identityTitle">选择姓名</h1>
-        <p class="desc">每个姓名只能绑定一次。标有「已被选择」的姓名无法再次选择。</p>
+        <p class="desc">确认后，此浏览器将记住你选择的姓名。</p>
         <label class="field" for="studentSelect">班级名单</label>
         <div class="select-wrap">
           <select id="studentSelect" required>
@@ -97,8 +97,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
             <option>范晓蕾</option>
           </select>
         </div>
-        <button type="submit" id="confirmName" disabled>确认姓名</button>
-        <button type="button" id="reloadNames" hidden>重新加载名单</button>
+        <button type="submit">确认姓名</button>
         <p class="desc" id="identityError" role="status" hidden></p>
       </form>
     </section>
@@ -136,7 +135,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     const lastTeachingWeek = Math.max(...schedule.flatMap(course => course.weeks));
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     const storagePrefix = 'class-checkin:v1:';
-    const identityKey = 'class-checkin:name-binding:v1';
+    const identityKey = 'class-checkin:local-student:v1';
     const cloudEndpoint = 'https://1466693390-i6sh7hemrh.ap-guangzhou.tencentscf.com';
     const clock = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Shanghai',
@@ -181,8 +180,6 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     const identityView = document.getElementById('identityView');
     const identityForm = document.getElementById('identityForm');
     const identityError = document.getElementById('identityError');
-    const confirmName = document.getElementById('confirmName');
-    const reloadNames = document.getElementById('reloadNames');
     const currentStudent = document.getElementById('currentStudent');
     const checkinView = document.getElementById('checkinView');
     const dateLine = document.getElementById('dateLine');
@@ -218,7 +215,6 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     });
     let lastRenderMinute = null;
     let studentName = "";
-    let binding = null;
     let completedSession = null;
     let historyRecords = [];
 
@@ -305,7 +301,13 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         session.enter.textContent = '正在同步…';
         session.error.textContent = '';
         try {
-          const {response, result} = await requestCloud('/practice-checkin', binding);
+          const previousBinding = storedBinding(window.localStorage);
+          const token = previousBinding?.name === studentName ? previousBinding.token : undefined;
+          const {response, result} = await requestCloud('/practice-checkin', {name: studentName, token});
+          if (!token && (response.status === 400 || response.status === 403)) {
+            session.error.textContent = '当前可以选姓名，模拟签到同步暂时需要原有绑定。';
+            return;
+          }
           if (!response.ok || result.ok !== true) throw new Error();
         } catch {
           session.error.textContent = '模拟签到同步失败，请重试。';
@@ -444,98 +446,44 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       identityError.hidden = !message;
     }
 
-    async function loadNames(message = '') {
-      studentSelect.disabled = true;
-      confirmName.disabled = true;
-      reloadNames.hidden = true;
-      showIdentityStatus('正在加载姓名状态…');
+    function storedBinding(storage) {
       try {
-        const {response, result} = await requestCloud('/name-availability');
-        if (!response.ok || !Array.isArray(result.occupied)) throw new Error();
-        const taken = new Set(result.occupied);
-        for (const option of studentSelect.options) {
-          const name = option.value;
-          if (!names.has(name)) continue;
-          option.value = name;
-          option.disabled = taken.has(name);
-          option.textContent = option.disabled ? name + '（已被选择）' : name;
-        }
-        if (taken.has(studentSelect.value)) studentSelect.selectedIndex = 0;
-        studentSelect.disabled = false;
-        confirmName.disabled = !names.has(studentSelect.value);
-        showIdentityStatus(message || (taken.size === names.size ? '班级名单中的姓名都已被选择。' : ''));
+        return JSON.parse(storage.getItem('class-checkin:name-binding:v1'));
       } catch {
-        reloadNames.hidden = false;
-        showIdentityStatus('暂时无法加载姓名状态，请重试。');
+        return null;
       }
     }
 
-    async function confirmBinding() {
-      studentSelect.disabled = true;
-      confirmName.disabled = true;
-      reloadNames.hidden = true;
-      showIdentityStatus('正在确认姓名…');
-      try {
-        const {name, token, confirmed} = binding;
-        const {response, result} = await requestCloud(confirmed ? '/verify-name' : '/claim-name', {name, token});
-        if (response.ok && result.ok === true) {
-          binding = {name, token, confirmed: true};
-          window.localStorage.setItem(identityKey, JSON.stringify(binding));
-          lockIdentity(name);
-          return;
-        }
-        if (response.status === 409 || response.status === 400) {
-          window.localStorage.removeItem(identityKey);
-          binding = null;
-          studentSelect.selectedIndex = 0;
-          await loadNames(result.error || '请重新选择姓名。');
-          return;
-        }
-        throw new Error();
-      } catch {
-        showIdentityStatus('暂时无法确认姓名，请重试。');
-        reloadNames.hidden = false;
-      }
+    function savedStudent(storage) {
+      const selected = storage.getItem(identityKey);
+      if (names.has(selected)) return selected;
+      const binding = storedBinding(storage);
+      if (binding?.confirmed && names.has(binding.name)) return binding.name;
+      const legacy = storage.getItem(storagePrefix + 'student');
+      return names.has(legacy) ? legacy : '';
     }
 
-    async function openIdentity() {
-      identityView.hidden = false;
-      studentSelect.selectedIndex = 0;
-      try {
-        const saved = JSON.parse(window.localStorage.getItem(identityKey));
-        if (names.has(saved?.name) && /^[a-f0-9]{64}$/.test(saved?.token)) {
-          binding = saved;
-          studentSelect.value = saved.name;
-          await confirmBinding();
-          return;
-        }
-      } catch {
-        showIdentityStatus('浏览器无法读取姓名绑定，请允许本地存储后再试。');
-        return;
-      }
-      await loadNames();
+    studentSelect.selectedIndex = 0;
+    try {
+      const savedName = savedStudent(window.localStorage);
+      if (savedName) lockIdentity(savedName);
+    } catch {
+      showIdentityStatus('浏览器无法读取姓名，请允许本地存储后再试。');
     }
+    identityView.hidden = Boolean(studentName);
 
-    studentSelect.addEventListener('change', () => {
-      confirmName.disabled = !names.has(studentSelect.value) || studentSelect.selectedOptions[0]?.disabled;
-    });
-    reloadNames.addEventListener('click', () => binding ? confirmBinding() : loadNames());
     identityForm.addEventListener('submit', event => {
       event.preventDefault();
-      const name = studentSelect.value;
-      if (studentName || binding || !names.has(name) || studentSelect.selectedOptions[0]?.disabled) return;
+      if (studentName || !names.has(studentSelect.value)) return;
       try {
-        const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
-        const draft = {name, token, confirmed: false};
-        window.localStorage.setItem(identityKey, JSON.stringify(draft));
-        binding = draft;
+        const storage = window.localStorage;
+        const name = savedStudent(storage) || studentSelect.value;
+        storage.setItem(identityKey, name);
+        lockIdentity(name);
       } catch {
         showIdentityStatus('浏览器无法保存姓名，请允许本地存储后再试。');
-        return;
       }
-      void confirmBinding();
     });
-    void openIdentity();
 
     setInterval(() => {
       if (studentName) render();
