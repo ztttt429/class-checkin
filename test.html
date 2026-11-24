@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>测试签到 · 25级科学计算班</title>
+<style>
+:root{--blue:#4268e8;--ink:#18233a;--muted:#728099;--edge:#e6ebf3;--bg:#f5f7fb;--good:#169b69}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5}main{max-width:520px;margin:auto;padding:20px 16px 70px}.nav{display:flex;justify-content:space-between;align-items:center;padding:4px 3px 21px}.logo{display:flex;gap:10px;align-items:center;font-weight:750;font-size:16px}.mark{height:35px;width:35px;background:var(--blue);border-radius:11px;color:white;display:grid;place-items:center;font-size:21px}.chip{font-size:12px;border-radius:30px;background:#e8edff;padding:6px 11px;color:#405ad0;font-weight:650}.headline{font-size:27px;font-weight:780;letter-spacing:-.7px;margin:7px 0 5px}.desc{color:var(--muted);font-size:13px}.card{background:#fff;border:1px solid var(--edge);border-radius:23px;box-shadow:0 7px 25px #142b6d09;margin-top:17px;overflow:hidden}.card-body{padding:22px}.badge{display:inline-flex;align-items:center;gap:7px;border-radius:30px;padding:7px 11px;font-size:12px;font-weight:700;background:#f1f4f9;color:#66758c}.badge.live{color:#087956;background:#dff8ed}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.course{font-size:24px;line-height:1.35;font-weight:790;margin:13px 0 8px}.divider{height:1px;background:#edf0f6;margin:19px 0}.info{display:flex;align-items:start;gap:12px;margin:13px 0;font-size:14px}.info i{width:27px;height:27px;border-radius:9px;background:#edf2ff;color:#5370de;font-style:normal;display:grid;place-items:center;flex-shrink:0}.info b{display:block;font-size:13px;font-weight:700}.info span{color:var(--muted);font-size:12px}.form{margin-top:18px}.field{display:block;font-size:13px;font-weight:750;margin-bottom:8px}button{width:100%;border:0;border-radius:14px;background:var(--blue);color:white;font-weight:750;font-size:15px;padding:15px;margin-top:14px;cursor:pointer}.footer{padding:26px 8px;text-align:center;font-size:11px;color:#97a3b5} 
+
+select{appearance:none;width:100%;border:1px solid #dfe5ef;border-radius:13px;padding:13px 42px 13px 14px;font:inherit;color:var(--ink);background:#fafbfe}
+.select-wrap{position:relative}
+.select-wrap::after{content:"";position:absolute;right:17px;top:calc(50% - 6px);width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.course-info{margin-bottom:0}
+.checkin-form{margin-top:19px}
+.desc,.field,.info b,.footer{font-size:14px}
+.success-card{text-align:center;padding:36px 22px 24px}
+.success-mark{display:grid;place-items:center;width:88px;height:88px;margin:0 auto 16px;background:#dff8ed;color:#087956;border-radius:50%;font-size:52px;font-weight:750;line-height:1}
+.success-title{font-size:32px;line-height:1.25;margin:0;color:#087956}
+.success-details{margin:22px 0 0;padding:14px 16px;border-radius:14px;background:#f5f7fb;text-align:left}
+.success-details div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}
+.success-details div+div{margin-top:9px}
+.success-details dt{color:var(--muted);font-size:14px}
+.success-details dd{margin:0;font-weight:650;overflow-wrap:anywhere}
+.success-card button{margin-top:20px}
+.course-list{display:grid;gap:12px;margin-top:17px}
+.schedule-card{margin:0;padding:15px 16px}
+.schedule-date{font-size:14px;color:var(--muted)}
+.schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0}
+.schedule-name{min-width:0;margin:0;font-size:17px;overflow-wrap:anywhere}
+.schedule-heading .badge{flex:none;white-space:nowrap}
+.schedule-card>button{width:auto;padding:9px 14px;margin-top:10px}
+.schedule-card>section{box-shadow:none}
+.history-card{padding:0 16px}
+.history-card summary{padding:14px 0;cursor:pointer;font-weight:750}
+.history-list{max-height:24rem;overflow:auto;padding:0;margin:0;list-style:none}
+.history-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--edge);padding:12px 0}
+.history-list .badge{flex:none}
+.history-list strong{overflow-wrap:anywhere}
+.history-empty{margin:0 0 14px}
+.history-export{width:auto;margin:0 0 12px;padding:9px 14px}
+.history-export:disabled{opacity:.5;cursor:default}
+
+[hidden]{display:none!important}
+.chip{text-decoration:none}
+.test-field{margin-top:14px}
+.test-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:20px;font-size:14px}
+.test-links a{color:var(--blue)}
+</style>
+</head>
+<body>
+<main>
+  <header class="nav">
+    <div class="logo"><div class="mark" aria-hidden="true">✓</div>课堂签到</div>
+    <span class="chip">测试模式</span>
+  </header>
+  <h1 class="headline">测试签到</h1>
+  <p class="desc">使用虚拟姓名体验签到。操作只保存在本机浏览器，不会写入腾讯表格。</p>
+  <section class="card" id="testView">
+    <form id="testForm" class="card-body">
+      <label class="field" for="testName">测试姓名</label>
+      <div class="select-wrap">
+        <select id="testName" required>
+          <option value="" selected disabled>请选择测试姓名</option>
+          <option>测试同学 A</option><option>测试同学 B</option><option>测试同学 C</option>
+        </select>
+      </div>
+      <label class="field test-field" for="testLesson">模拟课次</label>
+      <div class="select-wrap">
+        <select id="testLesson"><option>模拟课次 A</option><option>模拟课次 B</option></select>
+      </div>
+      <p class="desc" id="testStatus" role="status"></p>
+      <button id="testSubmit" type="submit">测试签到</button>
+    </form>
+  </section>
+  <section class="card success-card" id="testSuccess" hidden>
+    <div class="success-mark" aria-hidden="true">✓</div>
+    <h2 class="success-title" tabindex="-1" id="testSuccessTitle">测试签到成功</h2>
+    <p id="testReceipt"></p>
+    <button id="testBack" type="button">返回测试</button>
+  </section>
+  <nav class="test-links" aria-label="相关页面">
+    <a href="./">正式签到首页</a>
+    <a href="https://docs.qq.com/sheet/DTEZDaXNiVEJvZHRJ?tab=6GDc9B" target="_blank" rel="noopener">查看腾讯表格测试页</a>
+  </nav>
+</main>
+<script>
+  const form = document.getElementById('testForm');
+  const nameField = document.getElementById('testName');
+  const lessonField = document.getElementById('testLesson');
+  const submit = document.getElementById('testSubmit');
+  const status = document.getElementById('testStatus');
+  const view = document.getElementById('testView');
+  const success = document.getElementById('testSuccess');
+  const remembered = new Set();
+  const key = () => 'class-checkin:test:' + JSON.stringify([nameField.value, lessonField.value]);
+
+  function isSigned() {
+    if (remembered.has(key())) return true;
+    try { return localStorage.getItem(key()) === '1'; }
+    catch { return false; }
+  }
+
+  function render() {
+    const signed = Boolean(nameField.value) && isSigned();
+    submit.disabled = signed;
+    submit.textContent = signed ? '已签到' : '测试签到';
+    status.textContent = signed ? '这个测试姓名已完成本课次的签到。' : '';
+  }
+
+  nameField.addEventListener('change', render);
+  lessonField.addEventListener('change', render);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!nameField.value || isSigned()) return;
+    remembered.add(key());
+    try { localStorage.setItem(key(), '1'); }
+    catch { /* Retain the result in the open page if storage is blocked. */ }
+    document.getElementById('testReceipt').textContent = nameField.value + ' · ' + lessonField.value;
+    view.hidden = true;
+    success.hidden = false;
+    document.getElementById('testSuccessTitle').focus();
+  });
+  document.getElementById('testBack').addEventListener('click', () => {
+    success.hidden = true;
+    view.hidden = false;
+    render();
+    nameField.focus();
+  });
+  render();
+</script>
+</body>
+</html>
