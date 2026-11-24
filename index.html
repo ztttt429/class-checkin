@@ -326,17 +326,6 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       }
     }
 
-    function locationError(place, latitude, longitude) {
-      const sites = {'学思楼':[37.52869813,122.05675731], '竹风楼':[37.53166883,122.05585195], '图西教学楼':[37.53091131,122.05445117], '图东教学楼':[37.53095201,122.05593325], '北衡楼':[37.52700968,122.05823245]};
-      const key = Object.keys(sites).find(name => place?.includes(name));
-      if (!key) return '本课次尚未设置定位地点。';
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude)>90 || Math.abs(longitude)>180) return '请允许定位后再签到。';
-      const [lat, lon] = sites[key];
-      const rad = Math.PI / 180;
-      const a = Math.sin((latitude-lat)*rad/2)**2 + Math.cos(latitude*rad)*Math.cos(lat*rad)*Math.sin((longitude-lon)*rad/2)**2;
-      return 12742000*Math.asin(Math.sqrt(Math.min(1,a))) <= 500 ? '' : '当前位置超出本课次签到范围。';
-    }
-
     const progress = document.getElementById('progressView');
     const progressBack = document.getElementById('progressBack');
     function showProgress(step, title, hint) {
@@ -362,30 +351,12 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 
       session.pending = true;
       session.enter.disabled = true;
-      let step = 1;
-      showProgress(step, '正在校验位置', '请允许定位，校验通过后将上传签到数据。');
+      showProgress(1, '位置校验', '本次跳过定位，即将上传。');
       session.error.textContent = '';
       try {
-        session.enter.textContent = '正在定位…';
-        if (!navigator.geolocation) {
-          session.error.textContent = '当前环境无法定位，请用手机浏览器打开。';
-          return;
-        }
-        let coords;
-        try {
-          const position = await new Promise((resolve,reject) => navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
-          coords = position.coords;
-        } catch (error) {
-          session.error.textContent = error.code === 1 ? '请允许位置权限后重试；旧版安卓 App 请改用浏览器或更新。' : '定位失败，请到窗边或室外重试。';
-          return;
-        }
-        const {latitude, longitude} = coords;
-        const problem = locationError(session.practice ? '学思楼' : session.course.place, latitude, longitude);
-        if (problem) { session.error.textContent = problem; return; }
-        session.enter.textContent = '上传中…';
-        step = 2;
-        showProgress(step, '正在上传数据', '位置校验已通过，正在等待签到结果。');
-        const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey, latitude, longitude});
+        await new Promise(resolve => setTimeout(resolve, 500));
+        showProgress(2, '正在上传数据', '正在等待签到结果。');
+        const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey});
         if (!response.ok || result.ok !== true) {
           session.error.textContent = result.error || '签到同步失败，请重试。';
           return;
@@ -395,7 +366,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         return;
       } finally {
         if (session.error.textContent) {
-          showProgress(step, step === 1 ? '位置校验失败' : '签到上传失败', session.error.textContent);
+          showProgress(2, '签到上传失败', session.error.textContent);
           progressBack.hidden = false;
         }
         session.pending = false;
