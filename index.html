@@ -43,6 +43,10 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 .history-empty{margin:0 0 14px}
 .history-export{width:auto;margin:0 0 12px;padding:9px 14px}
 .history-export:disabled{opacity:.5;cursor:default}
+.sign-progress:not(:empty){display:flex;align-items:center;gap:12px;margin:12px 0;padding:14px 16px;border-radius:12px;background:#edf2ff;color:#2543a3;font-size:18px;font-weight:700}
+.sign-progress:not(:empty)::before{content:'';width:16px;height:16px;border:3px solid #adbfef;border-top-color:#2543a3;border-radius:50%;animation:sign-spin 1s linear infinite}
+@keyframes sign-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sign-progress:not(:empty)::before{animation:none}}
 </style>
 </head>
 <body>
@@ -334,7 +338,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 
       session.pending = true;
       session.enter.disabled = true;
-      session.enter.textContent = '正在同步…';
+      session.progress.textContent = '第 1 步 / 共 2 步　正在校订位置';
       session.error.textContent = '';
       try {
         session.enter.textContent = '正在定位…';
@@ -353,7 +357,8 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         const {latitude, longitude} = coords;
         const problem = locationError(session.practice ? '学思楼' : session.course.place, latitude, longitude);
         if (problem) { session.error.textContent = problem; return; }
-        session.enter.textContent = '正在同步…';
+        session.enter.textContent = '上传中…';
+        session.progress.textContent = '第 2 步 / 共 2 步　正在上传数据';
         const {response, result} = await requestCloud('/course-checkin', {name: studentName, sessionKey: session.sessionKey, latitude, longitude});
         if (!response.ok || result.ok !== true) {
           session.error.textContent = result.error || '签到同步失败，请重试。';
@@ -363,6 +368,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         session.error.textContent = '签到同步失败，请重试。';
         return;
       } finally {
+        session.progress.textContent = '';
         session.pending = false;
         session.enter.disabled = false;
         session.enter.textContent = '签到';
@@ -418,7 +424,10 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
         : '签到时段 ' + formatTime(course.opens) + '–' + formatTime(course.closes) + ' · 签到范围：50 米';
       card.append(date, heading);
       if (course.place) card.append(place);
-      card.append(enter, checkinInfo);
+      session.progress = document.createElement('div');
+      session.progress.className = 'sign-progress';
+      session.progress.setAttribute('role', 'status');
+      card.append(enter, session.progress, checkinInfo);
       session.error = document.createElement('div');
       session.error.className = 'desc';
       session.error.setAttribute('role', 'status');
