@@ -58,6 +58,8 @@ html[data-theme="frog"] .badge.live,html[data-theme="frog"] .success-mark{backgr
 html[data-theme="frog"] select{background-color:#fffaf0;color:var(--ink);border-color:var(--edge)}
 html[data-theme="frog"] .success-title{color:#385c23}
 </style>
+  <link rel="manifest" href="manifest.webmanifest">
+  <script defer src="reminders.js"></script>
 </head>
 <body>
   <main>
@@ -123,6 +125,8 @@ html[data-theme="frog"] .success-title{color:#385c23}
       <h1 class="headline">25级科学计算班课堂签到</h1>
       <div class="desc" id="currentStudent"></div>
       <div class="desc" id="dateLine"></div>
+      <button type="button" class="history-export" id="reminderButton" hidden>开启签到提醒</button>
+      <p class="desc" id="reminderNote" role="status" hidden></p>
       <p class="desc" id="sheetStatus" role="status" hidden></p>
       <button type="button" class="history-export" id="refreshRecords">刷新签到状态</button>
       <details class="card history-card" id="historyView">
