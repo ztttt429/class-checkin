@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>定位预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f6fc; color: #18233a; font: 1rem/1.55 system-ui, "Microsoft YaHei", sans-serif; }
+    main { max-width: 31rem; margin: 0 auto; padding: clamp(2rem, 8vw, 4rem) 1rem; }
+    h1 { margin: 0; font-size: 2rem; letter-spacing: -.04em; }
+    p { margin: .5rem 0 0; color: #495976; }
+    .card { margin-top: 1.4rem; padding: 1.2rem; border: 1px solid #dce4f0; border-radius: 1.2rem; background: white; box-shadow: 0 8px 26px #2139660d; }
+    .actions { display: grid; gap: .65rem; }
+    button { min-height: 3rem; border: 1px solid #d9e2f2; border-radius: .75rem; background: white; color: #2643a8; font: inherit; font-weight: 700; cursor: pointer; }
+    button.primary { background: #3157da; border-color: transparent; color: white; }
+    button:focus-visible { outline: 3px solid #3157da; outline-offset: 3px; }
+    button:disabled { opacity: .65; cursor: wait; }
+    #status { margin-top: 1rem; overflow-wrap: anywhere; }
+    h2 { margin: 0; font-size: 1.15rem; }
+    dl { margin: .5rem 0 0; }
+    dl div { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid #e9edf4; }
+    dl div:last-child { padding-bottom: 0; border: 0; }
+    dt { color: #495976; }
+    dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>定位预览</h1>
+    <p>试试浏览器能读到的经纬度。结果只显示在当前页面。</p>
+    <section class="card" aria-label="定位操作">
+      <div class="actions">
+        <button type="button" class="primary" id="locate">读取我的定位</button>
+        <button type="button" id="sample">查看模拟数据</button>
+      </div>
+      <p id="status" role="status" hidden></p>
+    </section>
+    <section class="card" id="result" aria-labelledby="result-title" hidden>
+      <h2 id="result-title"></h2>
+      <dl>
+        <div><dt>纬度</dt><dd id="latitude"></dd></div>
+        <div><dt>经度</dt><dd id="longitude"></dd></div>
+        <div><dt>定位精度</dt><dd id="accuracy"></dd></div>
+      </dl>
+    </section>
+  </main>
+  <script>
+    const locate = document.getElementById('locate');
+    const sample = document.getElementById('sample');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+    const errors = {
+      1: '定位权限未开启。请在浏览器或手机系统设置中允许定位后重试。',
+      2: '暂时无法获取定位。请检查系统定位是否开启后重试。',
+      3: '定位超时。可以走到窗边或室外后重试。'
+    };
+    let currentRequest = 0;
+
+    function showStatus(message) {
+      status.textContent = message;
+      status.hidden = !message;
+    }
+
+    function showResult(title, {latitude, longitude, accuracy}) {
+      document.getElementById('result-title').textContent = title;
+      document.getElementById('latitude').textContent = latitude.toFixed(6) + '°';
+      document.getElementById('longitude').textContent = longitude.toFixed(6) + '°';
+      document.getElementById('accuracy').textContent = '约 ±' + Math.ceil(accuracy) + ' 米';
+      result.hidden = false;
+    }
+
+    function resetButton() {
+      locate.disabled = false;
+      locate.textContent = '读取我的定位';
+    }
+
+    locate.addEventListener('click', () => {
+      if (!window.isSecureContext) {
+        showStatus('请通过 HTTPS 或本机 localhost 地址打开，再试一次。');
+        return;
+      }
+      if (!navigator.geolocation) {
+        showStatus('当前浏览器无法读取定位，可以先查看模拟数据。');
+        return;
+      }
+      const request = ++currentRequest;
+      locate.disabled = true;
+      locate.textContent = '正在读取…';
+      result.hidden = true;
+      showStatus('如果浏览器弹出定位权限请求，请选择允许。');
+      navigator.geolocation.getCurrentPosition(position => {
+        if (request !== currentRequest) return;
+        resetButton();
+        showStatus('定位读取成功。');
+        showResult('浏览器定位', position.coords);
+      }, error => {
+        if (request !== currentRequest) return;
+        resetButton();
+        showStatus(errors[error.code] || '定位读取失败，请重试。');
+      }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+    });
+
+    sample.addEventListener('click', () => {
+      currentRequest++;
+      resetButton();
+      showStatus('');
+      showResult('模拟数据', {latitude: 37.532, longitude: 122.062, accuracy: 18});
+    });
+  </script>
+</body>
+</html>
