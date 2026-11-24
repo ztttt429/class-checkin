@@ -204,13 +204,24 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       };
     })).filter(session => session.day >= recordStart)
       .sort((first, second) => first.opensAt - second.opensAt);
+    sessions.unshift({
+      course: {name: '模拟测试', start: '', end: ''},
+      day: recordStart,
+      opensAt: -Infinity,
+      closesAt: Infinity,
+      sessionKey: 'practice-v1',
+      practice: true,
+      signed: false
+    });
+    const practiceEndpoint = 'https://1466693390-i6sh7hemrh.ap-guangzhou.tencentscf.com/practice-checkin';
 
     let lastRenderMinute = null;
     let studentName = "";
     let completedSession = null;
     let historyRecords = [];
 
-    function sessionLabel({course, day}) {
+    function sessionLabel({course, day, practice}) {
+      if (practice) return '随时可以签到';
       const date = new Date(day);
       return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日 · 星期${weekdays[course.day]} · ${course.start}–${course.end}`;
     }
@@ -282,10 +293,31 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       render();
     }
 
-    function signIn(session) {
+    async function signIn(session) {
       render();
-      if (!studentName || !session.active || session.signed) return;
+      if (!studentName || !session.active || session.signed || session.pending) return;
 
+      if (session.practice) {
+        session.pending = true;
+        session.enter.disabled = true;
+        session.enter.textContent = '正在同步…';
+        session.error.textContent = '';
+        try {
+          const response = await fetch(practiceEndpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: studentName})
+          });
+          if (!response.ok || (await response.json()).ok !== true) throw new Error();
+        } catch {
+          session.error.textContent = '模拟签到同步失败，请重试。';
+          return;
+        } finally {
+          session.pending = false;
+          session.enter.disabled = false;
+          session.enter.textContent = '签到';
+        }
+      }
       session.signed = true;
       storageHint.hidden = true;
       try {
@@ -339,8 +371,18 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       enter.addEventListener('click', () => signIn(session));
       const checkinInfo = document.createElement('div');
       checkinInfo.className = 'desc';
-      checkinInfo.textContent = '签到时段 ' + formatTime(course.opens) + '–' + formatTime(course.closes) + ' · 签到范围：50 米';
-      card.append(date, heading, place, enter, checkinInfo);
+      checkinInfo.textContent = session.practice
+        ? '签到范围：50 米'
+        : '签到时段 ' + formatTime(course.opens) + '–' + formatTime(course.closes) + ' · 签到范围：50 米';
+      card.append(date, heading);
+      if (course.place) card.append(place);
+      card.append(enter, checkinInfo);
+      if (session.practice) {
+        session.error = document.createElement('div');
+        session.error.className = 'desc';
+        session.error.setAttribute('role', 'status');
+        card.append(session.error);
+      }
       const following = sessions.find(other => other.card && other.opensAt > session.opensAt);
       courseList.insertBefore(card, following?.card ?? null);
       Object.assign(session, {card, title, status, enter, checkinInfo});
