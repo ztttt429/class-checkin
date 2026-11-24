@@ -67,10 +67,11 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       </div>
       <label class="field test-field" for="testLesson">模拟课次</label>
       <div class="select-wrap">
-        <select id="testLesson"><option>模拟课次 A</option><option>模拟课次 B</option></select>
+        <select id="testLesson"><option>模拟课次 A</option><option>模拟课次 B</option><option>模拟课次 C</option></select>
       </div>
       <p class="desc" id="testStatus" role="status"></p>
       <button id="testSubmit" type="submit">测试签到</button>
+      <button id="testReset" type="button" hidden>清除本次测试记录</button>
     </form>
   </section>
   <section class="card success-card" id="testSuccess" hidden>
@@ -90,6 +91,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
   const lessonField = document.getElementById('testLesson');
   const submit = document.getElementById('testSubmit');
   const status = document.getElementById('testStatus');
+  const reset = document.getElementById('testReset');
   const view = document.getElementById('testView');
   const success = document.getElementById('testSuccess');
   const remembered = new Set();
@@ -104,12 +106,24 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
   function render() {
     const signed = Boolean(nameField.value) && isSigned();
     submit.disabled = signed;
+    reset.hidden = !signed;
     submit.textContent = signed ? '已签到' : '测试签到';
     status.textContent = signed ? '这个测试姓名已完成本课次的签到。' : '';
   }
 
   nameField.addEventListener('change', render);
   lessonField.addEventListener('change', render);
+  reset.addEventListener('click', () => {
+    remembered.delete(key());
+    try { localStorage.removeItem(key()); }
+    catch { /* The browser may block access to local storage. */ }
+    render();
+    if (submit.disabled) {
+      status.textContent = '浏览器未能清除这条测试记录。';
+    } else {
+      submit.focus();
+    }
+  });
   form.addEventListener('submit', event => {
     event.preventDefault();
     if (!nameField.value || isSigned()) return;
