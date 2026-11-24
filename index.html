@@ -128,6 +128,13 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     </section>
   </main>
   <script>
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const loadedPage = standalone ? [
+      document.head.innerHTML,
+      document.querySelector('main').outerHTML,
+      document.currentScript.textContent
+    ] : null;
+
     const slots = [['08:00','09:50'],['10:10','12:00'],['14:00','15:50'],['16:10','18:00'],['19:00','20:50']];
     const schedule = [{"day":1,"slot":1,"duration":1,"name":"C++程序设计","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":3,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":4,"slot":1,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":5,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":1,"slot":2,"duration":1,"name":"C++程序设计","weeks":[1,3,5,7,9,11,13,15],"place":"威海竹风楼201"},{"day":1,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":3,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":4,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼553"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":3,"duration":1,"name":"C++程序设计","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":4,"slot":3,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[2,4,6],"place":"威海图西教学楼322"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[8,10,12,14,16],"place":"威海学思楼558"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[1,2,3,4,5,6,7],"place":"威海图西教学楼322"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[8,9,10,11,12,13,14,15,16],"place":"威海学思楼558"},{"day":3,"slot":4,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"}];
     const dayLength = 86_400_000;
@@ -491,9 +498,42 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
     setInterval(() => {
       if (studentName) render();
     }, 1000);
-    window.addEventListener('pageshow', event => { if (event.persisted) syncHistory(); });
+    let checkingPage = false;
+    async function checkForPageUpdate() {
+      if (!loadedPage || checkingPage || !successView.hidden || sessions.some(session => session.pending)) return;
+      checkingPage = true;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('_page', String(Date.now()));
+        const response = await fetch(url, {cache: 'no-store'});
+        if (!response.ok) return;
+        const latest = new DOMParser().parseFromString(await response.text(), 'text/html');
+        if (!latest.getElementById('checkinView')) return;
+        const latestPage = [
+          latest.head.innerHTML,
+          latest.querySelector('main')?.outerHTML,
+          latest.querySelector('body > script')?.textContent
+        ];
+        if (document.visibilityState === 'visible' && successView.hidden &&
+            !sessions.some(session => session.pending) &&
+            latestPage.some((content, index) => content !== loadedPage[index])) {
+          window.location.replace(url.href);
+        }
+      } catch {
+        // Continue using the open page if the update check is unavailable.
+      } finally {
+        checkingPage = false;
+      }
+    }
+
+    window.addEventListener('pageshow', event => {
+      if (event.persisted) syncHistory();
+      void checkForPageUpdate();
+    });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && !checkinView.hidden) syncHistory();
+      if (document.visibilityState !== 'visible') return;
+      if (!checkinView.hidden) syncHistory();
+      void checkForPageUpdate();
     });
     refreshRecords.addEventListener('click', syncHistory);
     document.getElementById('returnHome').addEventListener('click', () => {
