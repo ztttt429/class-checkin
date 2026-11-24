@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f7fb">
+  <link rel="icon" href="checkin-mascot.png">
+  <link rel="apple-touch-icon" href="checkin-mascot.png">
   <title>25级科学计算班课堂签到</title>
   <style>
 :root{--blue:#4268e8;--ink:#18233a;--muted:#728099;--edge:#e6ebf3;--bg:#f5f7fb;--good:#169b69}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5}main{max-width:520px;margin:auto;padding:20px 16px 70px}.nav{display:flex;justify-content:space-between;align-items:center;padding:4px 3px 21px}.logo{display:flex;gap:10px;align-items:center;font-weight:750;font-size:16px}.mark{height:35px;width:35px;background:var(--blue);border-radius:11px;color:white;display:grid;place-items:center;font-size:21px}.chip{font-size:12px;border-radius:30px;background:#e8edff;padding:6px 11px;color:#405ad0;font-weight:650}.headline{font-size:27px;font-weight:780;letter-spacing:-.7px;margin:7px 0 5px}.desc{color:var(--muted);font-size:13px}.card{background:#fff;border:1px solid var(--edge);border-radius:23px;box-shadow:0 7px 25px #142b6d09;margin-top:17px;overflow:hidden}.card-body{padding:22px}.badge{display:inline-flex;align-items:center;gap:7px;border-radius:30px;padding:7px 11px;font-size:12px;font-weight:700;background:#f1f4f9;color:#66758c}.badge.live{color:#087956;background:#dff8ed}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.course{font-size:24px;line-height:1.35;font-weight:790;margin:13px 0 8px}.divider{height:1px;background:#edf0f6;margin:19px 0}.info{display:flex;align-items:start;gap:12px;margin:13px 0;font-size:14px}.info i{width:27px;height:27px;border-radius:9px;background:#edf2ff;color:#5370de;font-style:normal;display:grid;place-items:center;flex-shrink:0}.info b{display:block;font-size:13px;font-weight:700}.info span{color:var(--muted);font-size:12px}.form{margin-top:18px}.field{display:block;font-size:13px;font-weight:750;margin-bottom:8px}button{width:100%;border:0;border-radius:14px;background:var(--blue);color:white;font-weight:750;font-size:15px;padding:15px;margin-top:14px;cursor:pointer}.footer{padding:26px 8px;text-align:center;font-size:11px;color:#97a3b5} 
@@ -46,7 +48,7 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 <body>
   <main>
     <header class="nav">
-      <div class="logo"><div class="mark" aria-hidden="true">✓</div>课堂签到</div>
+      <div class="logo"><img class="mark" src="checkin-mascot.png" width="35" height="35" alt="">课堂签到</div>
     </header>
     <section class="card" id="identityView" aria-labelledby="identityTitle" hidden>
       <form class="card-body" id="identityForm" autocomplete="off">
