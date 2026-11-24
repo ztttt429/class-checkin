@@ -46,13 +46,26 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
 #progressView{padding:42px 20px;text-align:center}
 #progressTitle{font-size:28px;margin:12px 0}
 #progressHint{color:var(--muted)}
+
+#themePicker{width:auto;max-width:45%;margin:0;padding:6px 30px 6px 12px;border:1px solid var(--edge);border-radius:20px;background:var(--bg);color:var(--ink);font-weight:600;line-height:1.5;font-family:inherit;font-size:13px;appearance:auto;padding-right:6px}
+.frog-banner{display:none}
+html[data-theme="frog"]{--blue:#80511a;--ink:#392d20;--muted:#716449;--edge:#e7d8af;--bg:#fff8de}
+html[data-theme="frog"] body{min-height:100vh;background-color:var(--bg);background-image:linear-gradient(90deg,#efe1b142 50%,transparent 50%),linear-gradient(#efe1b142 50%,transparent 50%);background-size:26px 26px}
+html[data-theme="frog"] .frog-banner{display:block;aspect-ratio:3/1;background:#ffe49a url('milk-frog-banner.webp') center/cover no-repeat;border-radius:18px;border:2px solid #fffaf0;box-shadow:0 4px 14px #8c63151a;margin:0 0 20px}
+html[data-theme="frog"] .card{background:#fffdf5;border-color:var(--edge);box-shadow:0 5px 18px #815a1710}
+html[data-theme="frog"] .badge{background:#f4ead3;color:#685639}
+html[data-theme="frog"] .badge.live,html[data-theme="frog"] .success-mark{background:#e2f1c9;color:#385c23}
+html[data-theme="frog"] select{background-color:#fffaf0;color:var(--ink);border-color:var(--edge)}
+html[data-theme="frog"] .success-title{color:#385c23}
 </style>
 </head>
 <body>
   <main>
     <header class="nav">
       <div class="logo"><img class="mark" src="checkin-mascot.png?v=2" width="35" height="35" alt="">课堂签到</div>
+      <select id="themePicker" aria-label="页面风格"><option value="normal">普通风格</option><option value="frog">奶蛙风格</option></select>
     </header>
+    <div class="frog-banner" aria-hidden="true"></div>
     <section class="card" id="identityView" aria-labelledby="identityTitle" hidden>
       <form class="card-body" id="identityForm" autocomplete="off">
         <h1 class="headline" id="identityTitle">选择姓名</h1>
@@ -145,6 +158,18 @@ select:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-
       document.querySelector('main').outerHTML,
       document.currentScript.textContent
     ] : null;
+
+    const themePicker = document.getElementById('themePicker');
+    const themeKey = 'class-checkin:theme';
+    function applyTheme(value) {
+      themePicker.value = value === 'frog' ? 'frog' : 'normal';
+      document.documentElement.dataset.theme = themePicker.value;
+    }
+    try { applyTheme(localStorage.getItem(themeKey)); } catch { applyTheme('normal'); }
+    themePicker.addEventListener('change', () => {
+      applyTheme(themePicker.value);
+      try { localStorage.setItem(themeKey, themePicker.value); } catch {}
+    });
 
     const slots = [['08:00','09:50'],['10:10','12:00'],['14:00','15:50'],['16:10','18:00'],['19:00','20:50']];
     const schedule = [{"day":1,"slot":1,"duration":1,"name":"C++程序设计","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":3,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":4,"slot":1,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":5,"slot":1,"duration":1,"name":"常微分方程","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼347"},{"day":1,"slot":2,"duration":1,"name":"C++程序设计","weeks":[1,3,5,7,9,11,13,15],"place":"威海竹风楼201"},{"day":1,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":3,"slot":2,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16],"place":"威海学思楼553"},{"day":4,"slot":2,"duration":1,"name":"复变函数","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼251"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"place":"威海学思楼553"},{"day":1,"slot":3,"duration":1,"name":"数学分析（3）","weeks":[17],"place":"威海学思楼247"},{"day":2,"slot":3,"duration":1,"name":"C++程序设计","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼453"},{"day":4,"slot":3,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[2,4,6],"place":"威海图西教学楼322"},{"day":5,"slot":3,"duration":1,"name":"大学物理I（下）","weeks":[8,10,12,14,16],"place":"威海学思楼558"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[1,2,3,4,5,6,7],"place":"威海图西教学楼322"},{"day":2,"slot":4,"duration":1,"name":"大学物理I（下）","weeks":[8,9,10,11,12,13,14,15,16],"place":"威海学思楼558"},{"day":3,"slot":4,"duration":1,"name":"习近平新时代中国特色社会主义思想概论","weeks":[9,10,11,12,13,14,15,16],"place":"威海学思楼248"}];
