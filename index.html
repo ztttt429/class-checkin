@@ -675,7 +675,7 @@ async function loadNotices() {
   } finally { loading = false; }
 }
 retry.addEventListener('click', loadNotices);
-const categories = ['全部','有变更','科研竞赛','讲座','课程/考试相关','班级/年级活动','评奖评优','体育活动','艺术活动','其他活动','其他'];
+const categories = ['全部','即将截止','即将举行','有变更','科研竞赛','讲座','课程/考试相关','班级/年级活动','评奖评优','体育活动','艺术活动','其他活动','其他'];
 const tabs = document.getElementById('categories');
 const list = document.getElementById('notices');
 const search = document.getElementById('noticeSearch');
@@ -686,19 +686,46 @@ function element(tag,text,cls) {
   if (cls) node.className = cls;
   return node;
 }
+function upcomingTime(value, now, days, deadline) {
+  const limit = now + days * 86400000;
+  let closest = Infinity;
+  for (const line of String(value || '').split(/[\n；;]/)) {
+    const dates = [...line.matchAll(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/g)];
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      const prev = dates[i - 1];
+      if (prev && /[–—~～至到-]\s*$/.test(line.slice(prev.index + prev[0].length, date.index))) continue;
+      const [, year, month, day, hour, minute] = date;
+      const midnight = Date.UTC(+year, +month - 1, +day) - 28800000;
+      let start = midnight;
+      if (hour !== undefined) start += (+hour * 60 + +minute) * 60000;
+      else if (deadline) start += 86400000 - 1;
+      // Date-only events can still be upcoming during their Beijing calendar day.
+      const end = hour === undefined && !deadline ? start + 86400000 - 1 : start;
+      if (end >= now && start <= limit) closest = Math.min(closest, start);
+    }
+  }
+  return closest;
+}
 function renderNotices(category) {
   for (const tab of tabs.children) tab.setAttribute('aria-pressed',String(tab.textContent === category));
   currentCategory = category;
   if (!loaded) return;
   const query = search.value.trim().toLowerCase();
   const keywords = query.split(/\s+/).filter(Boolean);
-  const visible = notices.filter(notice => {
-    const inCategory = category === '全部' || (category === '有变更' ? Boolean(notice.change) : notice.category === category);
+  const now = Date.now();
+  const deadline = category === '即将截止';
+  const upcoming = deadline || category === '即将举行';
+  const visible = notices.flatMap(notice => {
+    const date = upcoming ? upcomingTime(deadline ? notice.deadline : notice.time, now, deadline ? 3 : 2, deadline) : 0;
+    const inCategory = upcoming ? Number.isFinite(date)
+      : category === '全部' || (category === '有变更' ? Boolean(notice.change) : notice.category === category);
     const searchable = [notice.title, notice.action, notice.original, notice.change].join(' ').toLowerCase();
-    return inCategory && keywords.every(keyword => searchable.includes(keyword));
+    return inCategory && keywords.every(keyword => searchable.includes(keyword)) ? [{notice, date}] : [];
   });
+  if (upcoming) visible.sort((first, second) => first.date - second.date);
   document.getElementById('count').textContent = visible.length ? visible.length + ' 条通知' : query ? '没有找到匹配的通知' : '这个分类暂无通知';
-  list.replaceChildren(...visible.map(notice => {
+  list.replaceChildren(...visible.map(({notice}) => {
     const card = element('article','','card');
     const tags = element('div','','tags');
     tags.append(element('span',notice.category,'tag'));
