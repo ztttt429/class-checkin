@@ -68,26 +68,18 @@ html[data-theme="frog"] .success-title{color:#385c23}
 #categories{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
 #categories button{width:auto;margin:0;padding:5px 10px;border:1px solid var(--edge);border-radius:999px;background:transparent;color:var(--ink);font-size:13px}
 #categories button[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:white}
-#notices{display:grid;gap:12px;margin-top:10px}
-#notices article{margin:0;padding:16px 17px;border-radius:18px}
-#notices h2{font-size:17px;margin:7px 0 11px;overflow-wrap:anywhere}
-#notices .tags{display:flex;gap:6px 9px;align-items:center;flex-wrap:wrap}
+#notices{display:grid;gap:10px;margin-top:10px}
+#notices article{margin:0;padding:14px 16px}
+#notices h2{font-size:17px;margin:6px 0;overflow-wrap:anywhere}
+#notices .tags{display:flex;gap:8px;flex-wrap:wrap}
 #notices .tag{font-size:12px;color:var(--blue);background:var(--bg);border-radius:6px;padding:2px 7px;font-weight:700}
 #notices .changed{color:#714c00;background:#fff0c9}
-#notices .notice-sent{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-#notices dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 10px;margin:0;font-size:13px}
-#notices dt,.notice-action-label{color:var(--muted);font-size:12px;font-weight:650}
-#notices dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
-.notice-action{margin-top:12px;padding:9px 11px;border-radius:10px;background:var(--bg);font-size:14px}
-.notice-action p,.notice-change p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.notice-change{margin:0 0 11px;padding:8px 10px;border-radius:8px;background:#fff3dc;color:#735018;font-size:13px;overflow-wrap:anywhere}
-#notices details{border-top:1px solid var(--edge);padding-top:8px;margin-top:11px;font-size:13px}
+#notices dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 10px;font-size:14px}
+#notices dt{color:var(--muted)}
+#notices dd{margin:0;overflow-wrap:anywhere}
+#notices details{border-top:1px solid var(--edge);padding-top:8px;font-size:14px}
 #notices summary{cursor:pointer;color:var(--blue);font-weight:650}
-#notices details p{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}
-#notices a{color:var(--blue);overflow-wrap:anywhere}
-.notice-count{display:inline-grid;place-items:center;margin-left:4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#c83a40;color:#fff;font:700 11px/1 system-ui;vertical-align:middle}
-.notice-count[hidden]{display:none}
-main{padding-top:calc(20px + env(safe-area-inset-top, 0px))}
+#notices details p{white-space:pre-wrap}
 </style>
   <link rel="manifest" href="manifest.webmanifest">
   <script defer src="reminders.js"></script>
@@ -665,12 +657,6 @@ main{padding-top:calc(20px + env(safe-area-inset-top, 0px))}
 (() => {
 let notices = [];
 let publishedTimes = null;
-let noticeVersions = [];
-let previousFeed = '';
-const seenKey = 'class-checkin:notice-seen:v1';
-let seen = {};
-try { seen = JSON.parse(localStorage.getItem(seenKey)) || {}; } catch {}
-let readOnLoad = false;
 let loaded = false;
 let loading = false;
 const endpoint = 'https://1466693390-lezj06ycwh.ap-guangzhou.tencentscf.com/notices';
@@ -691,14 +677,7 @@ async function loadNotices(manual = false) {
     if (!response.ok) throw Error();
     const data = await response.json();
     if (!Array.isArray(data)) throw Error();
-    const feed = JSON.stringify([data,timeline]);
-    const changedFeed = feed !== previousFeed;
     notices = data.slice().reverse();
-    noticeVersions = notices.map(notice => {
-      let hash = 2166136261;
-      for (const character of JSON.stringify(notice)) hash = Math.imul(hash ^ character.codePointAt(0), 16777619);
-      return (hash >>> 0).toString(36);
-    });
     if (timeline && window.crypto?.subtle) {
       publishedTimes = await Promise.all(notices.map(async notice => {
         const bytes = new TextEncoder().encode(notice.title + '\n' + (notice.original || ''));
@@ -710,10 +689,7 @@ async function loadNotices(manual = false) {
       publishedTimes = null;
     }
     loaded = true;
-    previousFeed = feed;
-    updateBadges(readOnLoad ? currentCategory : null);
-    readOnLoad = false;
-    if (changedFeed || manual) renderNotices(currentCategory);
+    renderNotices(currentCategory);
     if (manual) {
       refreshStatus.textContent = '通知已刷新';
       refreshStatus.hidden = false;
@@ -765,80 +741,28 @@ function upcomingTime(value, now, days, deadline) {
   }
   return closest;
 }
-function titleFor(notice) {
-  const generic = /^(?:[【\[])?(?:活动|比赛|讲座|报名|提交|截止|举办|集合)?(?:时间|日期|地点)\s*[：:]|^\d{1,4}[年/-]\d{1,2}/;
-  if (!generic.test(notice.title)) return notice.title;
-  return (notice.original || '').split(/\r?\n/)
-    .map(line => line.replace(/\[表情\]/g, '').trim())
-    .find(line => line && !generic.test(line)) || notice.title;
-}
-function noticeStatus(notice) {
-  const change = notice.change || '';
-  return change.match(/已取消|临时取消|活动取消|取消举行|延期.{0,6}待定/)?.[0] || '';
-}
-function matchCategory(category, notice, index, now) {
-  if (category === '全部') return 0;
-  if (category === '有变更') return notice.change ? 0 : Infinity;
-  if (category === '最新') {
-    const sent = publishedTimes?.[index];
-    return sent <= now && sent >= now - 3 * 86400000 ? sent : Infinity;
-  }
-  if (category === '即将截止' || category === '即将举行') {
-    if (noticeStatus(notice)) return Infinity;
-    const deadline = category === '即将截止';
-    return upcomingTime(deadline ? notice.deadline : notice.time, now, deadline ? 3 : 2, deadline);
-  }
-  return notice.category === category ? 0 : Infinity;
-}
-function updateBadges(markCategory) {
-  const now = Date.now();
-  for (const tab of tabs.children) {
-    const name = tab.dataset.category;
-    const members = notices.flatMap((notice, i) => Number.isFinite(matchCategory(name, notice, i, now)) ? [i] : []);
-    if (!Array.isArray(seen[name])) {
-      seen[name] = members.filter(i => !(publishedTimes?.[i] >= now - 3 * 86400000)).map(i => noticeVersions[i]);
-    }
-    const known = new Set(seen[name]);
-    if (markCategory === name) members.forEach(i => known.add(noticeVersions[i]));
-    const unread = members.filter(i => !known.has(noticeVersions[i])).length;
-    seen[name] = [...known].slice(-4096);
-    const badge = tab.lastElementChild;
-    badge.hidden = unread === 0;
-    badge.textContent = unread > 99 ? '99+' : String(unread);
-    tab.setAttribute('aria-label', unread ? name + '，' + unread + ' 条未读' : name);
-  }
-  try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch {}
-}
-function appendNoticeText(node, value) {
-  const pieces = String(value || '').split(/(https?:\/\/[^\s<>"【】（）。，；、！？]+)/g);
-  for (const piece of pieces) {
-    if (!/^https?:\/\//.test(piece)) { node.append(document.createTextNode(piece)); continue; }
-    const link = element('a', piece);
-    link.href = piece;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    node.append(link);
-  }
-}
 function renderNotices(category) {
-  for (const tab of tabs.children) tab.setAttribute('aria-pressed',String(tab.dataset.category === category));
+  for (const tab of tabs.children) tab.setAttribute('aria-pressed',String(tab.textContent === category));
   currentCategory = category;
   if (!loaded) return;
   const query = search.value.trim().toLowerCase();
   const keywords = query.split(/\s+/).filter(Boolean);
   const now = Date.now();
   const latest = category === '最新';
-  const upcoming = category === '即将截止' || category === '即将举行';
   if (latest && !publishedTimes) {
     document.getElementById('count').textContent = '暂时无法读取发布时间，请刷新通知。';
     list.replaceChildren();
     return;
   }
+  const deadline = category === '即将截止';
+  const upcoming = deadline || category === '即将举行';
   const visible = notices.flatMap((notice, index) => {
-    const date = matchCategory(category, notice, index, now);
-    const searchable = [titleFor(notice), notice.action, notice.original, notice.change].join(' ').toLowerCase();
-    return Number.isFinite(date) && keywords.every(keyword => searchable.includes(keyword))
-      ? [{notice, date, sentAt: publishedTimes?.[index]}] : [];
+    const date = latest ? publishedTimes[index] : upcoming ? upcomingTime(deadline ? notice.deadline : notice.time, now, deadline ? 3 : 2, deadline) : 0;
+    const inCategory = latest ? Number.isFinite(date) && date <= now && date >= now - 3 * 86400000
+      : upcoming ? Number.isFinite(date)
+      : category === '全部' || (category === '有变更' ? Boolean(notice.change) : notice.category === category);
+    const searchable = [notice.title, notice.action, notice.original, notice.change].join(' ').toLowerCase();
+    return inCategory && keywords.every(keyword => searchable.includes(keyword)) ? [{notice, date, sentAt: publishedTimes?.[index]}] : [];
   });
   if (latest) visible.sort((first, second) => second.date - first.date);
   if (upcoming) visible.sort((first, second) => first.date - second.date);
@@ -847,51 +771,25 @@ function renderNotices(category) {
     const card = element('article','','card');
     const tags = element('div','','tags');
     tags.append(element('span',notice.category,'tag'));
-    const canceled = noticeStatus(notice);
-    if (notice.change) tags.append(element('span',canceled || '有变更','tag changed'));
-    const sentLabel = Number.isFinite(sentAt) ? sentTimeFormat.format(sentAt) + ' 发送' : '发送时间未记录';
-    tags.append(element('span', sentLabel, 'notice-sent'));
-    card.append(tags, element('h2',titleFor(notice)));
-    if (notice.change) {
-      const change = element('div','','notice-change');
-      change.append(element('strong',canceled ? '安排变更' : '最新变更'), element('p',notice.change));
-      card.append(change);
-    }
+    if (notice.change) tags.append(element('span','有变更','tag changed'));
+    const sentLabel = Number.isFinite(sentAt) ? '发送于 ' + sentTimeFormat.format(sentAt) : '发送时间未记录';
+    tags.append(element('span', sentLabel, 'tag'));
+    card.append(tags, element('h2',notice.title));
     const fields = element('dl','');
-    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time]]) {
-      if (!canceled && value && value !== '原文未注明') fields.append(element('dt',label),element('dd',value));
+    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['要做什么',notice.action],['变更记录',notice.change]]) {
+      if (value) fields.append(element('dt',label),element('dd',value));
     }
-    if (fields.children.length) card.append(fields);
-    if (!canceled && notice.action && notice.action !== '原文未列出具体操作') {
-      const action = element('div','','notice-action');
-      const instructions = element('p','');
-      appendNoticeText(instructions,notice.action);
-      action.append(element('span','要做什么','notice-action-label'),instructions);
-      card.append(action);
-    }
-    if (notice.original) {
-      const original = element('details','');
-      const body = element('p','');
-      appendNoticeText(body,notice.original);
-      original.append(element('summary','查看原文'),body);
-      card.append(original);
-    }
+    const original = element('details','');
+    original.append(element('summary','查看原文'),element('p',notice.original));
+    card.append(fields);
+    if (notice.original) card.append(original);
     return card;
   }));
 }
 for (const name of categories) {
   const button = element('button',name);
   button.type = 'button';
-  button.dataset.category = name;
-  const badge = element('span','','notice-count');
-  badge.hidden = true;
-  badge.setAttribute('aria-hidden','true');
-  button.append(badge);
-  button.addEventListener('click', () => {
-    if (loaded) updateBadges(name);
-    else readOnLoad = true;
-    renderNotices(name);
-  });
+  button.addEventListener('click', () => renderNotices(name));
   tabs.append(button);
 }
 search.addEventListener('input', () => renderNotices(currentCategory));
@@ -906,13 +804,7 @@ function switchPage(show) {
   if (show && !studentName) return;
   noticePage.hidden = !show;
   attendance.hidden = show;
-  if (show) {
-    if (loaded) updateBadges(currentCategory);
-    else readOnLoad = true;
-    void loadNotices();
-  } else {
-    readOnLoad = false;
-  }
+  if (show) void loadNotices();
   showCheckin.setAttribute('aria-pressed',String(!show));
   showNotices.setAttribute('aria-pressed',String(show));
   try { sessionStorage.setItem(pagePreference, show ? 'notices' : 'checkin'); } catch {}
@@ -920,9 +812,6 @@ function switchPage(show) {
 showCheckin.addEventListener('click', () => switchPage(false));
 showNotices.addEventListener('click', () => switchPage(true));
 try { if (sessionStorage.getItem(pagePreference) === 'notices') switchPage(true); } catch {}
-setInterval(() => {
-  if (!noticePage.hidden && document.visibilityState === 'visible') void loadNotices();
-}, 60000);
 })();
 </script>
 </body>
