@@ -80,6 +80,10 @@ html[data-theme="frog"] .success-title{color:#385c23}
 #notices details{border-top:1px solid var(--edge);padding-top:8px;font-size:14px}
 #notices summary{cursor:pointer;color:var(--blue);font-weight:650}
 #notices details p{white-space:pre-wrap}
+.notice-updates{margin:12px 0;padding:10px 12px;border:1px solid var(--edge);border-radius:10px;background:var(--bg);font-size:13px}
+.notice-updates h3{margin:0 0 6px;font-size:13px}
+.notice-updates p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.notice-update-meta{color:var(--muted);font-size:12px;font-weight:650}
 </style>
   <link rel="manifest" href="manifest.webmanifest">
   <script defer src="reminders.js"></script>
@@ -776,12 +780,22 @@ function renderNotices(category) {
     tags.append(element('span', sentLabel, 'tag'));
     card.append(tags, element('h2',notice.title));
     const fields = element('dl','');
-    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['变更记录',notice.change]]) {
+    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time]]) {
       if (value) fields.append(element('dt',label),element('dd',value));
     }
     const original = element('details','');
     original.append(element('summary','查看原文'),element('p',notice.original));
-    card.append(fields);
+    if (fields.children.length) card.append(fields);
+    if (notice.change) {
+      const updates = element('section','','notice-updates');
+      updates.append(element('h3','变更记录'));
+      const meta = notice.change.match(/^(【[^】]+】\s*(?:\d{2}-\d{2}\s+\d{2}:\d{2})?)\s*/);
+      if (meta) updates.append(element('div',meta[1].trim(),'notice-update-meta'));
+      const body = (meta ? notice.change.slice(meta[0].length) : notice.change)
+        .replace(/([^\n])\s*([一二三四五六七八九十]+、)/g,'$1\n$2').trim();
+      if (body) updates.append(element('p',body));
+      card.append(updates);
+    }
     if (notice.original) card.append(original);
     return card;
   }));
