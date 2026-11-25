@@ -705,6 +705,10 @@ async function loadNotices(manual = false) {
   }
 }
 refresh.addEventListener('click', () => void loadNotices(true));
+const sentTimeFormat = new Intl.DateTimeFormat('zh-CN', {
+  timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+});
 const categories = ['全部','最新','即将截止','即将举行','有变更','科研竞赛','讲座','课程/考试相关','班级/年级活动','评奖评优','体育活动','艺术活动','其他活动','其他'];
 const tabs = document.getElementById('categories');
 const list = document.getElementById('notices');
@@ -758,19 +762,18 @@ function renderNotices(category) {
       : upcoming ? Number.isFinite(date)
       : category === '全部' || (category === '有变更' ? Boolean(notice.change) : notice.category === category);
     const searchable = [notice.title, notice.action, notice.original, notice.change].join(' ').toLowerCase();
-    return inCategory && keywords.every(keyword => searchable.includes(keyword)) ? [{notice, date}] : [];
+    return inCategory && keywords.every(keyword => searchable.includes(keyword)) ? [{notice, date, sentAt: publishedTimes?.[index]}] : [];
   });
   if (latest) visible.sort((first, second) => second.date - first.date);
   if (upcoming) visible.sort((first, second) => first.date - second.date);
   document.getElementById('count').textContent = visible.length ? visible.length + ' 条通知' : query ? '没有找到匹配的通知' : '这个分类暂无通知';
-  list.replaceChildren(...visible.map(({notice, date: timestamp}) => {
+  list.replaceChildren(...visible.map(({notice, sentAt}) => {
     const card = element('article','','card');
     const tags = element('div','','tags');
     tags.append(element('span',notice.category,'tag'));
     if (notice.change) tags.append(element('span','有变更','tag changed'));
-    if (latest) tags.append(element('span', new Intl.DateTimeFormat('zh-CN', {
-      timeZone:'Asia/Shanghai',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
-    }).format(timestamp) + ' 发布', 'tag'));
+    const sentLabel = Number.isFinite(sentAt) ? '发送于 ' + sentTimeFormat.format(sentAt) : '发送时间未记录';
+    tags.append(element('span', sentLabel, 'tag'));
     card.append(tags, element('h2',notice.title));
     const fields = element('dl','');
     for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['要做什么',notice.action],['变更记录',notice.change]]) {
