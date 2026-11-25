@@ -776,7 +776,7 @@ function renderNotices(category) {
     tags.append(element('span', sentLabel, 'tag'));
     card.append(tags, element('h2',notice.title));
     const fields = element('dl','');
-    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['要做什么',notice.action],['变更记录',notice.change]]) {
+    for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['变更记录',notice.change]]) {
       if (value) fields.append(element('dt',label),element('dd',value));
     }
     const original = element('details','');
