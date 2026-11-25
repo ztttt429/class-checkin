@@ -656,6 +656,7 @@ html[data-theme="frog"] .success-title{color:#385c23}
 <script>
 (() => {
 let notices = [];
+let publishedTimes = null;
 let loaded = false;
 let loading = false;
 const endpoint = 'https://1466693390-lezj06ycwh.ap-guangzhou.tencentscf.com/notices';
@@ -669,11 +670,24 @@ async function loadNotices(manual = false) {
   refreshStatus.hidden = true;
   if (!loaded) document.getElementById('count').textContent = '正在读取通知…';
   try {
-    const response = await fetch(endpoint, {cache:'no-store'});
+    const [response, timeline] = await Promise.all([
+      fetch(endpoint, {cache:'no-store'}),
+      fetch('notice-published.json', {cache:'no-store'}).then(result => result.ok ? result.json() : null).catch(() => null)
+    ]);
     if (!response.ok) throw Error();
     const data = await response.json();
     if (!Array.isArray(data)) throw Error();
     notices = data.slice().reverse();
+    if (timeline && window.crypto?.subtle) {
+      publishedTimes = await Promise.all(notices.map(async notice => {
+        const bytes = new TextEncoder().encode(notice.title + '\n' + (notice.original || ''));
+        const digest = new Uint8Array(await window.crypto.subtle.digest('SHA-256', bytes));
+        const key = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+        return timeline[key];
+      }));
+    } else {
+      publishedTimes = null;
+    }
     loaded = true;
     renderNotices(currentCategory);
     if (manual) {
@@ -691,7 +705,7 @@ async function loadNotices(manual = false) {
   }
 }
 refresh.addEventListener('click', () => void loadNotices(true));
-const categories = ['全部','即将截止','即将举行','有变更','科研竞赛','讲座','课程/考试相关','班级/年级活动','评奖评优','体育活动','艺术活动','其他活动','其他'];
+const categories = ['全部','最新','即将截止','即将举行','有变更','科研竞赛','讲座','课程/考试相关','班级/年级活动','评奖评优','体育活动','艺术活动','其他活动','其他'];
 const tabs = document.getElementById('categories');
 const list = document.getElementById('notices');
 const search = document.getElementById('noticeSearch');
@@ -730,22 +744,33 @@ function renderNotices(category) {
   const query = search.value.trim().toLowerCase();
   const keywords = query.split(/\s+/).filter(Boolean);
   const now = Date.now();
+  const latest = category === '最新';
+  if (latest && !publishedTimes) {
+    document.getElementById('count').textContent = '暂时无法读取发布时间，请刷新通知。';
+    list.replaceChildren();
+    return;
+  }
   const deadline = category === '即将截止';
   const upcoming = deadline || category === '即将举行';
-  const visible = notices.flatMap(notice => {
-    const date = upcoming ? upcomingTime(deadline ? notice.deadline : notice.time, now, deadline ? 3 : 2, deadline) : 0;
-    const inCategory = upcoming ? Number.isFinite(date)
+  const visible = notices.flatMap((notice, index) => {
+    const date = latest ? publishedTimes[index] : upcoming ? upcomingTime(deadline ? notice.deadline : notice.time, now, deadline ? 3 : 2, deadline) : 0;
+    const inCategory = latest ? Number.isFinite(date) && date <= now && date >= now - 3 * 86400000
+      : upcoming ? Number.isFinite(date)
       : category === '全部' || (category === '有变更' ? Boolean(notice.change) : notice.category === category);
     const searchable = [notice.title, notice.action, notice.original, notice.change].join(' ').toLowerCase();
     return inCategory && keywords.every(keyword => searchable.includes(keyword)) ? [{notice, date}] : [];
   });
+  if (latest) visible.sort((first, second) => second.date - first.date);
   if (upcoming) visible.sort((first, second) => first.date - second.date);
   document.getElementById('count').textContent = visible.length ? visible.length + ' 条通知' : query ? '没有找到匹配的通知' : '这个分类暂无通知';
-  list.replaceChildren(...visible.map(({notice}) => {
+  list.replaceChildren(...visible.map(({notice, date: timestamp}) => {
     const card = element('article','','card');
     const tags = element('div','','tags');
     tags.append(element('span',notice.category,'tag'));
     if (notice.change) tags.append(element('span','有变更','tag changed'));
+    if (latest) tags.append(element('span', new Intl.DateTimeFormat('zh-CN', {
+      timeZone:'Asia/Shanghai',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+    }).format(timestamp) + ' 发布', 'tag'));
     card.append(tags, element('h2',notice.title));
     const fields = element('dl','');
     for (const [label,value] of [['截止时间',notice.deadline],['活动时间',notice.time],['要做什么',notice.action],['变更记录',notice.change]]) {
