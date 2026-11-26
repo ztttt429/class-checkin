@@ -61,6 +61,13 @@ html[data-theme="frog"] .success-title{color:#385c23}
 .site-tabs button{position:relative;width:auto;margin:0;padding:8px 3px 11px;border-radius:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:700}
 .site-tabs button[aria-pressed=true]{color:var(--blue)}
 .site-tabs button[aria-pressed=true]::after{position:absolute;inset:auto 0 -1px;height:2px;background:currentColor;content:""}
+.resource-card{padding:16px}
+.resource-card h2{font-size:16px;margin:0 0 6px}
+.resource-card ul{list-style:none;margin:0;padding:0}
+.resource-card li+li{border-top:1px solid var(--edge)}
+.resource-card a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;color:var(--blue);font-weight:650;text-decoration:none}
+.resource-card a::after{content:"↗";flex:none}
+.resource-card a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .notice-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 #refreshNotices{margin:0;padding:6px 12px;border:1px solid var(--edge);color:var(--blue);background:transparent;font-size:14px}
 #noticeSearch{width:100%;margin:0 0 10px;padding:10px 13px;border:1px solid var(--edge);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit}
@@ -107,6 +114,7 @@ html[data-theme="frog"] .success-title{color:#385c23}
     <nav class="site-tabs" id="siteTabs" aria-label="切换页面" hidden>
       <button type="button" id="showCheckin" aria-pressed="true">课堂签到</button>
       <button type="button" id="showNotices" aria-pressed="false">班级通知</button>
+      <button type="button" id="showResources" aria-pressed="false">相关信息</button>
     </nav>
     <section id="noticePage" hidden aria-labelledby="noticeTitle">
       <div class="notice-heading">
@@ -118,6 +126,17 @@ html[data-theme="frog"] .success-title{color:#385c23}
       <input type="search" id="noticeSearch" aria-label="搜索通知" placeholder="搜索通知关键词">
       <p class="desc" id="count" role="status"></p>
       <div id="notices"></div>
+    </section>
+    <section id="resourcesPage" hidden aria-labelledby="resourcesTitle">
+      <h1 class="headline" id="resourcesTitle">相关信息</h1>
+      <section class="card resource-card" aria-labelledby="linksTitle">
+        <h2 id="linksTitle">友情链接</h2>
+        <ul>
+          <li><a href="https://www.wh.sdu.edu.cn/">山东大学（威海）官网</a></li>
+          <li><a href="https://math.wh.sdu.edu.cn/">山东大学数学与统计学院官网</a></li>
+          <li><a href="https://tiyu.wh.sdu.edu.cn/#/">体测</a></li>
+        </ul>
+      </section>
     </section>
     <div id="attendancePage">
     <div class="frog-banner" aria-hidden="true"></div>
@@ -823,19 +842,43 @@ const attendance = document.getElementById('attendancePage');
 const noticePage = document.getElementById('noticePage');
 const showCheckin = document.getElementById('showCheckin');
 const showNotices = document.getElementById('showNotices');
+const resourcesPage = document.getElementById('resourcesPage');
+const showResources = document.getElementById('showResources');
 const pagePreference = 'class-checkin:preview-page';
-function switchPage(show) {
-  if (show && !studentName) return;
-  noticePage.hidden = !show;
-  attendance.hidden = show;
-  if (show) void loadNotices();
-  showCheckin.setAttribute('aria-pressed',String(!show));
-  showNotices.setAttribute('aria-pressed',String(show));
-  try { sessionStorage.setItem(pagePreference, show ? 'notices' : 'checkin'); } catch {}
+const views = {
+  checkin: [attendance, showCheckin],
+  notices: [noticePage, showNotices],
+  resources: [resourcesPage, showResources]
+};
+function switchPage(selected) {
+  if (selected !== 'checkin' && !studentName) return;
+  for (const [name, [section, button]] of Object.entries(views)) {
+    section.hidden = name !== selected;
+    button.setAttribute('aria-pressed', String(name === selected));
+  }
+  if (selected === 'notices') void loadNotices();
+  try { sessionStorage.setItem(pagePreference, selected); } catch {}
 }
-showCheckin.addEventListener('click', () => switchPage(false));
-showNotices.addEventListener('click', () => switchPage(true));
-try { if (sessionStorage.getItem(pagePreference) === 'notices') switchPage(true); } catch {}
+for (const [name, [, button]] of Object.entries(views)) {
+  button.addEventListener('click', () => switchPage(name));
+}
+try {
+  const saved = sessionStorage.getItem(pagePreference);
+  if (saved === 'notices' || saved === 'resources') switchPage(saved);
+} catch {}
+// Older Android wrappers reject external navigation. Offer a way to copy the link.
+const userAgent = navigator.userAgent;
+const legacyApp = /Android/i.test(userAgent) && /; wv\)/.test(userAgent)
+  && new URLSearchParams(location.search).has('app_open')
+  && Number(userAgent.match(/\bClassCheckin\/(\d+)\b/)?.[1] || 0) < 9;
+if (legacyApp) {
+  for (const link of resourcesPage.querySelectorAll('a')) {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      window.prompt('请复制地址，用手机浏览器打开。安卓 1.8 可直接打开浏览器。', link.href);
+    });
+  }
+}
 })();
 </script>
 <dialog id="android-update-dialog" aria-labelledby="android-update-title">
