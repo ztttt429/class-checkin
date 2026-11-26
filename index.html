@@ -87,15 +87,15 @@ html[data-theme="frog"] .success-title{color:#385c23}
 </style>
   <link rel="manifest" href="manifest.webmanifest">
   <script defer src="reminders.js"></script>
-<meta name="checkin-page-version" content="2026-11-26.1">
 <style>
-#checkin-update-dialog { box-sizing: border-box; width: min(360px, calc(100% - 32px)); padding: 22px; border: 1px solid #dce2ea; border-radius: 18px; background: #fff; color: #182234; }
-#checkin-update-dialog::backdrop { background: #11182780; }
-#checkin-update-dialog h2 { margin: 0; font-size: 21px; }
-#checkin-update-dialog p { margin: 10px 0 19px; }
-#checkin-update-dialog form { display: flex; justify-content: flex-end; gap: 8px; margin: 0; }
-#checkin-update-dialog button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: 10px; background: #eef2f8; color: #182234; font: inherit; }
-#checkin-update-dialog #checkin-update-now { background: #3658d3; color: #fff; }
+#android-update-dialog { box-sizing: border-box; width: min(365px, calc(100% - 32px)); padding: 22px; border: 1px solid #dce2ea; border-radius: 18px; background: #fff; color: #182234; }
+#android-update-dialog::backdrop { background: #11182780; }
+#android-update-dialog h2 { margin: 0; font-size: 21px; }
+#android-update-dialog p { margin: 10px 0 16px; }
+#android-update-dialog input { box-sizing: border-box; width: 100%; margin-bottom: 12px; font-size: 16px; }
+#android-update-dialog form { display: flex; justify-content: flex-end; gap: 8px; margin: 0; }
+#android-update-dialog button, #android-update-dialog a { display: inline-grid; place-items: center; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: #eef2f8; color: #182234; font: inherit; }
+#android-update-dialog a { background: #3658d3; color: white; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -838,56 +838,16 @@ showNotices.addEventListener('click', () => switchPage(true));
 try { if (sessionStorage.getItem(pagePreference) === 'notices') switchPage(true); } catch {}
 })();
 </script>
-<dialog id="checkin-update-dialog" aria-labelledby="checkin-update-title">
-  <h2 id="checkin-update-title">签到页面有更新</h2>
-  <p>点「立即更新」加载新版页面。</p>
+<dialog id="android-update-dialog" aria-labelledby="android-update-title">
+  <h2 id="android-update-title">安卓安装包有更新</h2>
+  <p id="android-update-note"></p>
+  <p id="android-update-fallback" hidden>请复制下载地址，用手机浏览器打开，再按系统提示安装。</p>
+  <input id="android-update-address" aria-label="安装包下载地址" readonly hidden>
   <form method="dialog">
     <button type="submit">稍后</button>
-    <button type="button" id="checkin-update-now">立即更新</button>
+    <a id="android-update-now">立即更新</a>
   </form>
 </dialog>
-<script>
-(() => {
-  if (!/Android/i.test(navigator.userAgent) && navigator.userAgentData?.platform !== 'Android') return;
-
-  // 发布新版时把页面版本标记改成新的值。
-  const version = document.querySelector('meta[name="checkin-page-version"]').content;
-  let checking = false;
-  let lastCheck = 0;
-  let shownVersion;
-
-  async function checkVersion() {
-    if (document.hidden || checking || Date.now() - lastCheck < 10000) return;
-    checking = true;
-    lastCheck = Date.now();
-    try {
-      const url = new URL('./index.html', location.href);
-      url.searchParams.set('_version_check', String(lastCheck));
-      const response = await fetch(url, {cache: 'no-store'});
-      if (!response.ok) return;
-      const html = await response.text();
-      const latest = html.match(/<meta name="checkin-page-version" content="([^"]+)">/)?.[1];
-      if (!latest || latest === version || latest === shownVersion) return;
-      shownVersion = latest;
-      const dialog = document.getElementById('checkin-update-dialog');
-      if (!dialog.open) dialog.showModal();
-    } catch {
-      // 网络暂时不可用时，留到下一次检查。
-    } finally {
-      checking = false;
-    }
-  }
-
-  document.getElementById('checkin-update-now').addEventListener('click', () => {
-    const url = new URL(location.href);
-    url.searchParams.set('_page_update', String(Date.now()));
-    location.replace(url.href);
-  });
-  window.addEventListener('pageshow', checkVersion);
-  document.addEventListener('visibilitychange', checkVersion);
-  setInterval(checkVersion, 60000);
-  checkVersion();
-})();
-</script>
+<script src="./android-update.js?v=1" defer></script>
 </body>
 </html>
