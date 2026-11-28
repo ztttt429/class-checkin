@@ -692,15 +692,22 @@ let notices = [];
 let publishedTimes = null;
 let loaded = false;
 let loading = false;
+let noticeSnapshot;
+let refreshWhenReady = false;
 const endpoint = 'https://1466693390-lezj06ycwh.ap-guangzhou.tencentscf.com/notices';
 const refresh = document.getElementById('refreshNotices');
 const refreshStatus = document.getElementById('noticeRefreshStatus');
 async function loadNotices(manual = false) {
-  if (loading) return;
+  if (loading) {
+    if (manual) refreshWhenReady = true;
+    return;
+  }
   loading = true;
   refresh.disabled = true;
-  refresh.textContent = '刷新中…';
-  refreshStatus.hidden = true;
+  if (manual || !loaded) {
+    refresh.textContent = '刷新中…';
+    refreshStatus.hidden = true;
+  }
   if (!loaded) document.getElementById('count').textContent = '正在读取通知…';
   try {
     const [response, timeline] = await Promise.all([
@@ -710,31 +717,42 @@ async function loadNotices(manual = false) {
     if (!response.ok) throw Error();
     const data = await response.json();
     if (!Array.isArray(data)) throw Error();
-    notices = data.slice().reverse();
-    if (timeline && window.crypto?.subtle) {
-      publishedTimes = await Promise.all(notices.map(async notice => {
-        const bytes = new TextEncoder().encode(notice.title + '\n' + (notice.original || ''));
-        const digest = new Uint8Array(await window.crypto.subtle.digest('SHA-256', bytes));
-        const key = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
-        return timeline[key];
-      }));
-    } else {
-      publishedTimes = null;
+    const snapshot = JSON.stringify([data, timeline]);
+    const changed = snapshot !== noticeSnapshot;
+    if (changed) {
+      notices = data.slice().reverse();
+      if (timeline && window.crypto?.subtle) {
+        publishedTimes = await Promise.all(notices.map(async notice => {
+          const bytes = new TextEncoder().encode(notice.title + '\n' + (notice.original || ''));
+          const digest = new Uint8Array(await window.crypto.subtle.digest('SHA-256', bytes));
+          const key = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+          return timeline[key];
+        }));
+      } else {
+        publishedTimes = null;
+      }
+      noticeSnapshot = snapshot;
     }
     loaded = true;
-    renderNotices(currentCategory);
+    if (changed) renderNotices(currentCategory);
     if (manual) {
       refreshStatus.textContent = '通知已刷新';
       refreshStatus.hidden = false;
     }
   } catch {
     if (!loaded) document.getElementById('count').textContent = '';
-    refreshStatus.textContent = loaded ? '刷新失败，正在显示上次读取的通知。' : '暂时无法读取通知，请点刷新重试。';
-    refreshStatus.hidden = false;
+    if (manual || !loaded) {
+      refreshStatus.textContent = loaded ? '刷新失败，正在显示上次读取的通知。' : '暂时无法读取通知，请点刷新重试。';
+      refreshStatus.hidden = false;
+    }
   } finally {
     loading = false;
     refresh.disabled = false;
     refresh.textContent = '刷新通知';
+    if (refreshWhenReady) {
+      refreshWhenReady = false;
+      void loadNotices(true);
+    }
   }
 }
 refresh.addEventListener('click', () => void loadNotices(true));
@@ -840,6 +858,12 @@ renderNotices('全部');
 
 const attendance = document.getElementById('attendancePage');
 const noticePage = document.getElementById('noticePage');
+function refreshVisibleNotices() {
+  if (!noticePage.hidden && document.visibilityState === 'visible') void loadNotices();
+}
+window.addEventListener('pageshow', refreshVisibleNotices);
+document.addEventListener('visibilitychange', refreshVisibleNotices);
+setInterval(refreshVisibleNotices, 60000);
 const showCheckin = document.getElementById('showCheckin');
 const showNotices = document.getElementById('showNotices');
 const resourcesPage = document.getElementById('resourcesPage');
